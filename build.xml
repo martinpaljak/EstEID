@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<project name="EstEID hacker" default="dist" basedir=".">
+  <description>ANT build file for EstEID hacking</description>
+  <!-- Build the software -->
+  <path id="build.classpath">
+    <pathelement location="lib/bcprov-jdk15on-150.jar"/>
+    <pathelement location="lib/bcpkix-jdk15on-150.jar"/>
+    <pathelement location="lib/jopt-simple-4.6.jar"/>
+    <pathelement location="lib/gp.jar"/>
+  </path>
+  <target name="compile" description="compile the source">
+    <mkdir dir="build"/>
+    <javac srcdir="src" destdir="build" includeantruntime="false" excludes="**/tests/**" target="1.7" debug="true" debuglevel="lines,vars,source">
+      <compilerarg value="-Xlint"/>
+      <classpath refid="build.classpath"/>
+    </javac>
+  </target>
+  <!-- Package it into a nice little JAR -->
+  <target name="dist" depends="compile" description="generate the distribution">
+    <jar manifest="Manifest.mf" destfile="esteid.jar" level="9" basedir="build">
+      <fileset dir="src">
+        <include name="resources/*.pem"/>
+      </fileset>
+    </jar>
+  </target>
+  <!-- Wrap the JAR into .EXE for Windows users -->
+  <target name="windist" depends="dist" description="package as .exe">
+    <property name="launch4j.dir" location="ext/launch4j"/>
+    <taskdef name="launch4j" classname="net.sf.launch4j.ant.Launch4jTask" classpath="${launch4j.dir}/launch4j.jar:${launch4j.dir}/lib/xstream.jar"/>
+    <launch4j>
+      <config headerType="console" outfile="esteid.exe" jar="esteid.jar" dontWrapJar="true" errTitle="EstEID hacker">
+        <jre minVersion="1.7.0"/>
+      </config>
+    </launch4j>
+  </target>
+  <!-- Clean the source tree -->
+  <target name="clean" description="clean up">
+    <delete dir="build"/>
+    <delete file="esteid.jar"/>
+  </target>
+</project>
