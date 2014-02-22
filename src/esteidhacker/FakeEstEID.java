@@ -20,13 +20,22 @@ package esteidhacker;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
 import java.nio.charset.Charset;
+import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Arrays;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import javax.smartcardio.Card;
 import javax.smartcardio.CardChannel;
 import javax.smartcardio.CardException;
@@ -41,9 +50,9 @@ import openkms.gp.LoggingCardTerminal;
 import openkms.gp.TerminalManager;
 
 import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.crypto.RuntimeCryptoException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMParser;
-import org.bouncycastle.util.Arrays;
 
 
 public class FakeEstEID {
@@ -153,12 +162,44 @@ public class FakeEstEID {
 				KeyPair auth = keyGen.generateKeyPair();
 				KeyPair sign = keyGen.generateKeyPair();
 				X509Certificate authcert = ca.generateUserCertificate((RSAPublicKey) auth.getPublic(), false, "JOHN", "CONNOR", "12322323423", "john@skynet.com");
-				X509Certificate signcert = ca.generateUserCertificate((RSAPublicKey) auth.getPublic(), true, "JOHN", "CONNOR", "12322323423", "john@skynet.com");
+				X509Certificate signcert = ca.generateUserCertificate((RSAPublicKey) sign.getPublic(), true, "JOHN", "CONNOR", "12322323423", "john@skynet.com");
+				// Verify softkeys
+				if (!verifyKeypairIntegrity((RSAPrivateCrtKey)auth.getPrivate(), (RSAPublicKey)authcert.getPublicKey())) {
+					throw new RuntimeCryptoException("Cert and key mismatch");
+				}
+				if (!verifyKeypairIntegrity((RSAPrivateCrtKey)sign.getPrivate(), (RSAPublicKey)signcert.getPublicKey())) {
+					throw new RuntimeCryptoException("Cert and key mismatch");
+				}
 
 				send_key(channel, (RSAPrivateCrtKey) auth.getPrivate(), 1);
 				send_key(channel, (RSAPrivateCrtKey) sign.getPrivate(), 2);
 				send_cert(channel, authcert.getEncoded(), 1);
 				send_cert(channel, signcert.getEncoded(), 2);
+
+				// Verify on-card keys.
+				Cipher verify_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+				SecureRandom r = SecureRandom.getInstance("SHA1PRNG");
+				byte [] rnd = new byte[8];
+
+				r.nextBytes(rnd);
+				CommandAPDU cmd = new CommandAPDU(0x00, 0x88, 0x00, 0x00, rnd, 256);
+				ResponseAPDU resp = channel.transmit(cmd);
+				check(resp);
+				verify_cipher.init(Cipher.DECRYPT_MODE, authcert.getPublicKey());
+				byte[] result = verify_cipher.doFinal(resp.getData());
+				if (!java.util.Arrays.equals(rnd, result)) {
+					throw new RuntimeCryptoException("Card and auth key don't match!");
+				}
+
+				r.nextBytes(rnd);
+				cmd = new CommandAPDU(0x00, 0x2A, 0x9E, 0x9A, rnd, 256);
+				resp = channel.transmit(cmd);
+				check(resp);
+				verify_cipher.init(Cipher.DECRYPT_MODE, signcert.getPublicKey());
+				result = verify_cipher.doFinal(resp.getData());
+				if (!java.util.Arrays.equals(rnd, result)) {
+					throw new RuntimeCryptoException("Card and sign key don't match!");
+				}
 			}
 
 			// make this automagic somehow.
@@ -186,7 +227,7 @@ public class FakeEstEID {
 	private static void send_cert(CardChannel channel, byte[] cert, int num) throws Exception {
 		int chunksize = 253;
 
-		byte [] c = Arrays.append(cert, (byte)0x80);
+		byte [] c = org.bouncycastle.util.Arrays.append(cert, (byte)0x80);
 		for (int i = 0; i<= (c.length / 253); i++) {
 			byte []d = new byte[255];
 			int off = i*chunksize;
@@ -208,26 +249,53 @@ public class FakeEstEID {
 
 	private static void send_key(CardChannel channel, RSAPrivateCrtKey key, int num) throws CardException {
 		CommandAPDU cmd = null;
-		cmd = new CommandAPDU(0x80, 0x03, num, 0x01, unsigned(key.getPrimeP().toByteArray()));
+		cmd = new CommandAPDU(0x80, 0x03, num, 0x01, unsigned(key.getPrimeP()));
 		check(channel.transmit(cmd));
-		cmd = new CommandAPDU(0x80, 0x03, num, 0x02, unsigned(key.getPrimeQ().toByteArray()));
+		cmd = new CommandAPDU(0x80, 0x03, num, 0x02, unsigned(key.getPrimeQ()));
 		check(channel.transmit(cmd));
-		cmd = new CommandAPDU(0x80, 0x03, num, 0x03, unsigned(key.getPrimeExponentP().toByteArray()));
+		cmd = new CommandAPDU(0x80, 0x03, num, 0x03, unsigned(key.getPrimeExponentP()));
 		check(channel.transmit(cmd));
-		cmd = new CommandAPDU(0x80, 0x03, num, 0x04, unsigned(key.getPrimeExponentQ().toByteArray()));
+		cmd = new CommandAPDU(0x80, 0x03, num, 0x04, unsigned(key.getPrimeExponentQ()));
 		check(channel.transmit(cmd));
-		cmd = new CommandAPDU(0x80, 0x03, num, 0x05, unsigned(key.getCrtCoefficient().toByteArray()));
+		cmd = new CommandAPDU(0x80, 0x03, num, 0x05, unsigned(key.getCrtCoefficient()));
 		check(channel.transmit(cmd));
 	}
 
-	private static byte[] unsigned(byte[] value) {
-		if (value[0] == 0x00)
-			return Arrays.copyOfRange(value, 1, value.length);
-		return value;
+	private static byte[] unsigned(BigInteger num) {
+		byte[] bytes = num.toByteArray();
+		if (bytes.length == 3 || bytes.length % 8 == 0) {
+			return bytes;
+		}
+		return Arrays.copyOfRange(bytes, 1, bytes.length);
 	}
+
 	private static void check(ResponseAPDU resp) {
 		if (resp.getSW() != 0x9000)
 			throw new RuntimeException("PROBLEMO AMIGO!");
+	}
+
+	private static boolean verifyKeypairIntegrity(RSAPrivateCrtKey privkey, RSAPublicKey pubkey) throws NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException {
+		byte[] nonce = new byte[16];
+		SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
+		Cipher verify_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+
+		sr.nextBytes(nonce);
+		verify_cipher.init(Cipher.ENCRYPT_MODE, pubkey);
+		byte[] cryptogram = verify_cipher.doFinal(nonce);
+		verify_cipher.init(Cipher.DECRYPT_MODE, privkey);
+		byte[] result = verify_cipher.doFinal(cryptogram);
+		if (!Arrays.equals(nonce, result))
+			return false;
+
+		sr.nextBytes(nonce);
+		verify_cipher.init(Cipher.ENCRYPT_MODE, privkey);
+		cryptogram = verify_cipher.doFinal(nonce);
+		verify_cipher.init(Cipher.DECRYPT_MODE, pubkey);
+		result = verify_cipher.doFinal(cryptogram);
+		if (!Arrays.equals(nonce, result))
+			return false;
+
+		return true;
 	}
 }
 

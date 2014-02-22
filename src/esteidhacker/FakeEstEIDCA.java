@@ -61,9 +61,9 @@ import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 
-
 // TODO/FIXME: GeneralizedTime instead of UTCTime
 public class FakeEstEIDCA {
+
 	// KeyStore constants
 	private static final char[] password = "infected".toCharArray();
 	private static final String root = "root";
@@ -75,7 +75,8 @@ public class FakeEstEIDCA {
 	private RSAPrivateCrtKey esteidKey;
 	private X509Certificate esteidCert;
 
-	public void generate() throws NoSuchAlgorithmException, InvalidKeyException, IllegalStateException, NoSuchProviderException, SignatureException, IOException, ParseException, OperatorCreationException, CertificateException {
+	public void generate() throws NoSuchAlgorithmException, InvalidKeyException, IllegalStateException, NoSuchProviderException,
+	SignatureException, IOException, ParseException, OperatorCreationException, CertificateException {
 		System.out.println("Generating CA ...");
 		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA", BouncyCastleProvider.PROVIDER_NAME);
 		keyGen.initialize(2048);
@@ -97,21 +98,20 @@ public class FakeEstEIDCA {
 		return crt;
 	}
 
-
-	private X509Certificate makeRootCert(KeyPair kp) throws InvalidKeyException,
-	IllegalStateException, NoSuchProviderException, SignatureException, IOException, NoSuchAlgorithmException,
-	ParseException, OperatorCreationException, CertificateException {
+	private X509Certificate makeRootCert(KeyPair kp) throws InvalidKeyException, IllegalStateException, NoSuchProviderException,
+	SignatureException, IOException, NoSuchAlgorithmException, ParseException, OperatorCreationException, CertificateException {
 
 		// Load real root certificate
-		X509CertificateHolder real =  getRealCert("/resources/sk-root.pem");
+		X509CertificateHolder real = getRealCert("/resources/sk-root.pem");
 		// Use values
-		JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(real.getIssuer(), real.getSerialNumber(), real.getNotBefore(), real.getNotAfter(), real.getSubject(), kp.getPublic());
+		JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(real.getIssuer(), real.getSerialNumber(),
+				real.getNotBefore(), real.getNotAfter(), real.getSubject(), kp.getPublic());
 
 		@SuppressWarnings("unchecked")
 		List<ASN1ObjectIdentifier> list = real.getExtensionOIDs();
 
 		// Copy all extensions verbatim
-		for (ASN1ObjectIdentifier extoid: list) {
+		for (ASN1ObjectIdentifier extoid : list) {
 			Extension ext = real.getExtension(extoid);
 			builder.copyAndAddExtension(ext.getExtnId(), ext.isCritical(), real);
 		}
@@ -119,28 +119,27 @@ public class FakeEstEIDCA {
 		// Generate cert
 		ContentSigner sigGen = new JcaContentSignerBuilder("SHA1withRSA").setProvider(BouncyCastleProvider.PROVIDER_NAME).build(kp.getPrivate());
 
-		X509CertificateHolder cert  = builder.build(sigGen);
+		X509CertificateHolder cert = builder.build(sigGen);
 		return new JcaX509CertificateConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME).getCertificate(cert);
 
 	}
 
-	private X509Certificate makeEsteidCert(KeyPair esteid, KeyPair root) throws InvalidKeyException,
-	IllegalStateException, NoSuchProviderException, SignatureException, IOException, NoSuchAlgorithmException,
-	ParseException, OperatorCreationException, CertificateException {
-
-
+	private X509Certificate makeEsteidCert(KeyPair esteid, KeyPair root) throws InvalidKeyException, IllegalStateException,
+	NoSuchProviderException, SignatureException, IOException, NoSuchAlgorithmException, ParseException, OperatorCreationException,
+	CertificateException {
 
 		// Load current root certificate
-		X509CertificateHolder real =  getRealCert("/resources/sk-esteid.pem");
+		X509CertificateHolder real = getRealCert("/resources/sk-esteid.pem");
 
-		JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(real.getIssuer(), real.getSerialNumber(), real.getNotBefore(), real.getNotAfter(), real.getSubject(), esteid.getPublic());
+		JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(real.getIssuer(), real.getSerialNumber(),
+				real.getNotBefore(), real.getNotAfter(), real.getSubject(), esteid.getPublic());
 
 		// Basic constraints
 		@SuppressWarnings("unchecked")
 		List<ASN1ObjectIdentifier> list = real.getExtensionOIDs();
 
 		// Copy all extensions
-		for (ASN1ObjectIdentifier extoid: list) {
+		for (ASN1ObjectIdentifier extoid : list) {
 			Extension ext = real.getExtension(extoid);
 			builder.copyAndAddExtension(ext.getExtnId(), ext.isCritical(), real);
 		}
@@ -148,26 +147,31 @@ public class FakeEstEIDCA {
 		// Generate cert
 		ContentSigner sigGen = new JcaContentSignerBuilder("SHA1withRSA").setProvider(BouncyCastleProvider.PROVIDER_NAME).build(root.getPrivate());
 
-		X509CertificateHolder cert  = builder.build(sigGen);
+		X509CertificateHolder cert = builder.build(sigGen);
 		return new JcaX509CertificateConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME).getCertificate(cert);
 
 	}
 
-	public X509Certificate generateUserCertificate(RSAPublicKey pubkey, boolean signature, String firstname, String lastname, String idcode, String email) throws InvalidKeyException, ParseException, IOException, IllegalStateException, NoSuchProviderException, NoSuchAlgorithmException, SignatureException, CertificateException, OperatorCreationException {
+	public X509Certificate generateUserCertificate(RSAPublicKey pubkey, boolean signature, String firstname, String lastname,
+			String idcode, String email) throws InvalidKeyException, ParseException, IOException, IllegalStateException,
+			NoSuchProviderException, NoSuchAlgorithmException, SignatureException, CertificateException, OperatorCreationException {
 		Date startDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse("2014-01-01");
 		Date endDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse("2014-12-31");
 
 		String template = "C=EE,O=ESTEID,OU=%s,CN=%s\\,%s\\,%s,SURNAME=%s,GIVENNAME=%s,SERIALNUMBER=%s";
-
+		// Normalize.
+		lastname = lastname.toUpperCase();
+		firstname = firstname.toUpperCase();
+		idcode = idcode.toUpperCase();
+		email = email.toLowerCase();
 		String subject = String.format(template, (signature ? "digital signature" : "authentication"), lastname, firstname, idcode,
 				lastname, firstname, idcode);
 
-		byte [] serialBytes = new byte[16];
+		byte[] serialBytes = new byte[16];
 		SecureRandom rnd = SecureRandom.getInstance("SHA1PRNG");
 		rnd.nextBytes(serialBytes);
 		serialBytes[0] &= 0x7F; // Can't be negative
 		BigInteger serial = new BigInteger(serialBytes);
-
 
 		X509CertificateHolder real;
 		if (signature) {
@@ -176,17 +180,17 @@ public class FakeEstEIDCA {
 			real = getRealCert("/resources/sk-auth.pem");
 		}
 		serial = real.getSerialNumber();
-		System.out.println("Subj " + real.getSubject());
+		System.out.println("Generating subject: " + real.getSubject());
 		JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(real.getIssuer(), serial, startDate, endDate, new X500Name(subject), pubkey);
 
 		@SuppressWarnings("unchecked")
 		List<ASN1ObjectIdentifier> list = real.getExtensionOIDs();
 
-		// Copy all extensions
-		for (ASN1ObjectIdentifier extoid: list) {
+		// Copy all extensions, except altName
+		for (ASN1ObjectIdentifier extoid : list) {
 			Extension ext = real.getExtension(extoid);
 			if (ext.getExtnId().equals(Extension.subjectAlternativeName)) {
-				// Alt name must be changed
+				// altName must be changed
 				builder.addExtension(ext.getExtnId(), ext.isCritical(), new GeneralNames(new GeneralName(GeneralName.rfc822Name, email)));
 			} else {
 				builder.copyAndAddExtension(ext.getExtnId(), ext.isCritical(), real);
@@ -196,21 +200,21 @@ public class FakeEstEIDCA {
 		// Generate cert
 		ContentSigner sigGen = new JcaContentSignerBuilder("SHA1withRSA").setProvider(BouncyCastleProvider.PROVIDER_NAME).build(esteidKey);
 
-		X509CertificateHolder cert  = builder.build(sigGen);
+		X509CertificateHolder cert = builder.build(sigGen);
 		return new JcaX509CertificateConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME).getCertificate(cert);
-
 	}
 
-
-	public void storeToFile(File f) throws KeyStoreException, NoSuchProviderException, NoSuchAlgorithmException, CertificateException, IOException {
+	public void storeToFile(File f) throws KeyStoreException, NoSuchProviderException, NoSuchAlgorithmException, CertificateException,
+	IOException {
 		KeyStore keystore = KeyStore.getInstance("pkcs12", BouncyCastleProvider.PROVIDER_NAME);
 		keystore.load(null, password);
-		keystore.setKeyEntry(root, rootKey, password, new Certificate[] {rootCert});
-		keystore.setKeyEntry(esteid, esteidKey, password, new Certificate[] {esteidCert});
+		keystore.setKeyEntry(root, rootKey, password, new Certificate[] { rootCert });
+		keystore.setKeyEntry(esteid, esteidKey, password, new Certificate[] { esteidCert });
 		keystore.store(new FileOutputStream(f), password);
 	}
 
-	public void loadFromFile(File f)throws KeyStoreException, NoSuchProviderException, NoSuchAlgorithmException, CertificateException, IOException, UnrecoverableKeyException {
+	public void loadFromFile(File f) throws KeyStoreException, NoSuchProviderException, NoSuchAlgorithmException, CertificateException,
+	IOException, UnrecoverableKeyException {
 		KeyStore keystore = KeyStore.getInstance("pkcs12", BouncyCastleProvider.PROVIDER_NAME);
 		keystore.load(new FileInputStream(f), password);
 		rootKey = (RSAPrivateCrtKey) keystore.getKey(root, password);
@@ -242,7 +246,5 @@ public class FakeEstEIDCA {
 		wr.writeObject(authcert);
 		wr.writeObject(signcert);
 		wr.close();
-
 	}
-
 }
