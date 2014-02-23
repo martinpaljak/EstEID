@@ -59,6 +59,7 @@ public class FakeEstEID {
 	// options.
 	private static final String OPT_VERSION = "version";
 	private static final String OPT_HELP = "help";
+	private static final String OPT_DEBUG = "debug";
 
 	private static final String OPT_GENCA = "genca";
 	private static final String OPT_CA = "ca";
@@ -82,7 +83,9 @@ public class FakeEstEID {
 
 		// Generic options
 		parser.accepts(OPT_VERSION, "Show information about the program");
-		parser.accepts(OPT_HELP, "Show this help");
+		parser.acceptsAll(Arrays.asList("h", OPT_HELP), "Show this help");
+		parser.acceptsAll(Arrays.asList("d", OPT_DEBUG), "Debug (show APDU-s)");
+
 		parser.accepts(OPT_CA, "Use CA").withRequiredArg().ofType(File.class);
 		parser.accepts(OPT_GENCA, "Generate CA").withRequiredArg().ofType(File.class);
 
@@ -131,7 +134,11 @@ public class FakeEstEID {
 		Card card = null;
 		try {
 			// Connect to card
-			CardTerminal term = LoggingCardTerminal.getInstance(TerminalManager.getTheReader());
+			CardTerminal term = TerminalManager.getTheReader();
+
+			if (args.has(OPT_DEBUG))
+				term = LoggingCardTerminal.getInstance(term);
+
 			card = term.connect("*");
 			card.beginExclusive();
 			CardChannel channel = card.getBasicChannel();
@@ -233,8 +240,12 @@ public class FakeEstEID {
 					check(channel.transmit(cmd));
 				}
 			}
-		} catch (CardException e) {
-			e.printStackTrace();
+		} catch (Exception e) {
+			if (TerminalManager.getExceptionMessage(e) != null) {
+				System.out.println("Error: " + TerminalManager.getExceptionMessage(e));
+			} else {
+				throw e;
+			}
 		} finally {
 			if (card != null) {
 				card.endExclusive();
