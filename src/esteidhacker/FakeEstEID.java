@@ -81,11 +81,14 @@ public class FakeEstEID {
 
 	// Other fun constants
 	private static final String[] defaultDataFile = new String[] {"JÄNES-KARVANE", "SIILIPOISS", "Jesús MARIA", "G", "LOL", "01.01.0001", "10101010005", "A0000001", "31.12.2099", "TIIBET", "01.01.2014", "ALALINE", "SEE POLE PÄRIS KAART", " ", " ", " "};
+	public static final byte[] aid = new byte[] {(byte)0xD2, (byte)0x33, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x45, (byte)0x73, (byte)0x74, (byte)0x45, (byte)0x49, (byte)0x44, (byte)0x20, (byte)0x76, (byte)0x33, (byte)0x35};
 
 	CardChannel channel;
 
-	public FakeEstEID(CardChannel ch) {
+	public FakeEstEID(CardChannel ch) throws CardException {
 		channel = ch;
+		// Select the AID (required for HCE/multiapp)
+		check(channel.transmit(new CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid)));
 	}
 
 
@@ -225,11 +228,11 @@ public class FakeEstEID {
 		}
 	}
 	public void send_cert(byte[] cert, int num) throws Exception {
-		int chunksize = 253;
+		int chunksize = 240; // was:253
 
 		byte [] c = org.bouncycastle.util.Arrays.append(cert, (byte)0x80);
-		for (int i = 0; i<= (c.length / 253); i++) {
-			byte []d = new byte[255];
+		for (int i = 0; i<= (c.length / chunksize); i++) {
+			byte []d = new byte[2+chunksize];
 			int off = i*chunksize;
 
 			d[0] = (byte) ((off & 0xFF00) >>> 8);
