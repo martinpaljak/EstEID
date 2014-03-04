@@ -152,6 +152,25 @@ public class FakeEstEIDCA {
 
 	}
 
+	public X509Certificate cloneUserCertificate(RSAPublicKey pubkey, X509Certificate cert) throws OperatorCreationException, CertificateException, IOException {
+		X509CertificateHolder holder = new X509CertificateHolder(cert.getEncoded());
+		// Clone everything
+		JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(holder.getIssuer(), cert.getSerialNumber(), cert.getNotBefore(), cert.getNotAfter(), holder.getSubject(), pubkey);
+		@SuppressWarnings("unchecked")
+		List<ASN1ObjectIdentifier> list = holder.getExtensionOIDs();
+
+		// Copy all extensions
+		for (ASN1ObjectIdentifier extoid : list) {
+			Extension ext = holder.getExtension(extoid);
+			builder.copyAndAddExtension(ext.getExtnId(), ext.isCritical(), holder);
+		}
+		// Generate cert
+		ContentSigner sigGen = new JcaContentSignerBuilder("SHA1withRSA").setProvider(BouncyCastleProvider.PROVIDER_NAME).build(esteidKey);
+
+		X509CertificateHolder newcert = builder.build(sigGen);
+		return new JcaX509CertificateConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME).getCertificate(newcert);
+
+	}
 	public X509Certificate generateUserCertificate(RSAPublicKey pubkey, boolean signature, String firstname, String lastname,
 			String idcode, String email) throws InvalidKeyException, ParseException, IOException, IllegalStateException,
 			NoSuchProviderException, NoSuchAlgorithmException, SignatureException, CertificateException, OperatorCreationException {

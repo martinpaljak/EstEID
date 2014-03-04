@@ -67,15 +67,28 @@ public class FakeEstEID {
 
 	private static final String OPT_GENAUTH = "genauth";
 	private static final String OPT_GENSIGN = "gensign";
-	private static final String OPT_LOADAUTH = "authcert";
-	private static final String OPT_LOADSIGN = "signcert";
+
+	private static final String OPT_AUTHCERT = "authcert";
+	private static final String OPT_SIGNCERT = "signcert";
+	private static final String OPT_AUTHKEY = "authkey";
+	private static final String OPT_SIGNKEY = "signkey";
+
 
 	private static final String OPT_NEW = "new";
 	private static final String OPT_DATA = "data";
 	private static final String OPT_CHECK = "check";
+	private static final String OPT_FAKE = "fake";
 
-
+	// Other fun constants
 	private static final String[] defaultDataFile = new String[] {"JÄNES-KARVANE", "SIILIPOISS", "Jesús MARIA", "G", "LOL", "01.01.0001", "10101010005", "A0000001", "31.12.2099", "TIIBET", "01.01.2014", "ALALINE", "SEE POLE PÄRIS KAART", " ", " ", " "};
+
+	CardChannel channel;
+
+	public FakeEstEID(CardChannel ch) {
+		channel = ch;
+	}
+
+
 
 	public static void main(String argv[]) throws Exception {
 		OptionSet args = null;
@@ -92,13 +105,14 @@ public class FakeEstEID {
 		// Generate keys and stuff.
 		parser.accepts(OPT_GENAUTH, "Generate auth key + cert from CA");
 		parser.accepts(OPT_GENSIGN, "Generate sign key + cert from CA");
-		parser.accepts(OPT_LOADAUTH, "Load auth cert").withRequiredArg().ofType(File.class);
-		parser.accepts(OPT_LOADSIGN, "Load sign cert").withRequiredArg().ofType(File.class);
+		parser.accepts(OPT_AUTHCERT, "Load auth cert").withRequiredArg().ofType(File.class);
+		parser.accepts(OPT_SIGNCERT, "Load sign cert").withRequiredArg().ofType(File.class);
 
-		//
+		parser.accepts(OPT_FAKE, "Fake a certificate (sign with fake CA)").withRequiredArg().ofType(File.class);
+		// New card generation
 		parser.accepts(OPT_NEW, "Generate a new Mari-Liis Männik (or compatible)");
 		parser.accepts(OPT_DATA, "Edit the personal data file");
-		parser.accepts(OPT_CHECK, "Check keys for consistency");
+		parser.accepts(OPT_CHECK, "Check generated keys for consistency");
 
 
 		// Parse arguments
@@ -129,6 +143,8 @@ public class FakeEstEID {
 			ca.storeToFile((File)args.valueOf(OPT_GENCA));
 		} else if (args.has(OPT_CA)) {
 			ca.loadFromFile((File)args.valueOf(OPT_CA));
+		} else if (args.has(OPT_NEW) || args.has(OPT_GENAUTH) || args.has(OPT_GENSIGN)) {
+			throw new IllegalArgumentException("Need a CA!");
 		}
 
 		Card card = null;
@@ -141,108 +157,63 @@ public class FakeEstEID {
 
 			card = term.connect("*");
 			card.beginExclusive();
-			CardChannel channel = card.getBasicChannel();
+			CardChannel ch = card.getBasicChannel();
 
-			if (args.has(OPT_LOADAUTH)) {
-				File f = (File) args.valueOf(OPT_LOADAUTH);
-				send_cert(channel, f, 1);
+			FakeEstEID fake = new FakeEstEID(ch);
+			if (args.has(OPT_AUTHCERT)) {
+				File f = (File) args.valueOf(OPT_AUTHCERT);
+				fake.send_cert_pem(f, 1);
 			}
 
-			if (args.has(OPT_LOADSIGN)) {
-				File f = (File) args.valueOf(OPT_LOADSIGN);
-				send_cert(channel, f, 2);
+			if (args.has(OPT_SIGNCERT)) {
+				File f = (File) args.valueOf(OPT_SIGNCERT);
+				fake.send_cert_pem(f, 2);
+			}
+
+			if (args.has(OPT_AUTHKEY)) {
+				File f = (File) args.valueOf(OPT_AUTHKEY);
+				fake.send_key_pem(f, 1);
+			}
+
+			if (args.has(OPT_SIGNKEY)) {
+				File f = (File) args.valueOf(OPT_SIGNKEY);
+				fake.send_key_pem(f, 2);
 			}
 
 			if (args.has(OPT_GENAUTH)) {
 				KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
 				keyGen.initialize(2048);
 				KeyPair key = keyGen.generateKeyPair();
-				send_key(channel, (RSAPrivateCrtKey) key.getPrivate(), 1);
+				fake.send_key((RSAPrivateCrtKey) key.getPrivate(), 1);
 			}
 
 			if (args.has(OPT_GENSIGN)) {
 				KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
 				keyGen.initialize(2048);
 				KeyPair key = keyGen.generateKeyPair();
-				send_key(channel, (RSAPrivateCrtKey) key.getPrivate(), 2);
+				fake.send_key((RSAPrivateCrtKey) key.getPrivate(), 2);
 			}
 
 			if (args.has(OPT_NEW)) {
-				if (!args.has(OPT_CA))
-					throw new IllegalArgumentException("Need a CA");
-				KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA", BouncyCastleProvider.PROVIDER_NAME);
-				keyGen.initialize(2048);
-				// Generate keys
-				KeyPair auth = keyGen.generateKeyPair();
-				KeyPair sign = keyGen.generateKeyPair();
-				X509Certificate authcert = ca.generateUserCertificate((RSAPublicKey) auth.getPublic(), false, "SIILIPOISS", "UDUS", "10101010005", "kalevipoeg@soome.fi");
-				X509Certificate signcert = ca.generateUserCertificate((RSAPublicKey) sign.getPublic(), true, "SIILIPOISS", "UDUS", "10101010005", "kalevipoeg@soome.fi");
-				if (args.has(OPT_CHECK)) {
-					// Verify softkeys
-					if (!verifyKeypairIntegrity((RSAPrivateCrtKey)auth.getPrivate(), (RSAPublicKey)authcert.getPublicKey())) {
-						throw new RuntimeCryptoException("Cert and key mismatch");
-					}
-					if (!verifyKeypairIntegrity((RSAPrivateCrtKey)sign.getPrivate(), (RSAPublicKey)signcert.getPublicKey())) {
-						throw new RuntimeCryptoException("Cert and key mismatch");
-					}
-				}
-				send_key(channel, (RSAPrivateCrtKey) auth.getPrivate(), 1);
-				send_key(channel, (RSAPrivateCrtKey) sign.getPrivate(), 2);
-				send_cert(channel, authcert.getEncoded(), 1);
-				send_cert(channel, signcert.getEncoded(), 2);
-
-				CommandAPDU cmd = null;
-				ResponseAPDU resp = null;
-				if (args.has(OPT_CHECK)) {
-					// Verify on-card keys.
-					Cipher verify_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-					SecureRandom r = SecureRandom.getInstance("SHA1PRNG");
-					byte [] rnd = new byte[8];
-
-					r.nextBytes(rnd);
-					cmd = new CommandAPDU(0x00, 0x88, 0x00, 0x00, rnd, 256);
-					resp = channel.transmit(cmd);
-					check(resp);
-					verify_cipher.init(Cipher.DECRYPT_MODE, authcert.getPublicKey());
-					byte[] result = verify_cipher.doFinal(resp.getData());
-					if (!java.util.Arrays.equals(rnd, result)) {
-						throw new RuntimeCryptoException("Card and auth key don't match!");
-					}
-
-					r.nextBytes(rnd);
-					cmd = new CommandAPDU(0x00, 0x2A, 0x9E, 0x9A, rnd, 256);
-					resp = channel.transmit(cmd);
-					check(resp);
-					verify_cipher.init(Cipher.DECRYPT_MODE, signcert.getPublicKey());
-					result = verify_cipher.doFinal(resp.getData());
-					if (!java.util.Arrays.equals(rnd, result)) {
-						throw new RuntimeCryptoException("Card and sign key don't match!");
-					}
-				}
-				// Dump data file
-				for (int i=0;i<defaultDataFile.length; i++) {
-					cmd = new CommandAPDU(0x80, 0x04, i+1, 0x00, defaultDataFile[i].toUpperCase().getBytes("ISO8859-15"));
-					resp = channel.transmit(cmd);
-					check(resp);
-				}
+				fake.make_sample_card(ca, args.has(OPT_CHECK));
 			}
 
 			// make this automagic somehow.
 			if (args.has(OPT_DATA)) {
 				for (int i = 1; i<= 16; i++) {
 					CommandAPDU cmd = new CommandAPDU(0x80, 0x04, i, 0x00, 256);
-					ResponseAPDU resp = channel.transmit(cmd);
+					ResponseAPDU resp = fake.channel.transmit(cmd);
 					check(resp);
 					String value = new String(resp.getData(), Charset.forName("ISO8859-15"));
 					System.out.println("Enter new value for: \n" + value);
 					String input = System.console().readLine();
 					cmd = new CommandAPDU(0x80, 0x04, i, 0x00, input.getBytes("ISO8859-15"));
-					check(channel.transmit(cmd));
+					check(fake.channel.transmit(cmd));
 				}
 			}
 		} catch (Exception e) {
 			if (TerminalManager.getExceptionMessage(e) != null) {
-				System.out.println("Error: " + TerminalManager.getExceptionMessage(e));
+				System.out.println("PC/SC Error: " + TerminalManager.getExceptionMessage(e));
 			} else {
 				throw e;
 			}
@@ -253,7 +224,7 @@ public class FakeEstEID {
 			}
 		}
 	}
-	private static void send_cert(CardChannel channel, byte[] cert, int num) throws Exception {
+	public void send_cert(byte[] cert, int num) throws Exception {
 		int chunksize = 253;
 
 		byte [] c = org.bouncycastle.util.Arrays.append(cert, (byte)0x80);
@@ -269,14 +240,21 @@ public class FakeEstEID {
 			check(channel.transmit(cmd));
 		}
 	}
-	private static void send_cert(CardChannel channel, File f, int num) throws Exception {
+
+	public void send_cert_pem(File f, int num) throws Exception {
 		PEMParser pem = new PEMParser(new InputStreamReader(new FileInputStream(f)));
-		X509CertificateHolder auth = (X509CertificateHolder) pem.readObject();
+		X509CertificateHolder crt = (X509CertificateHolder) pem.readObject();
 		pem.close();
-		send_cert(channel, auth.getEncoded(), num);
+		send_cert(crt.getEncoded(), num);
+	}
+	public void send_key_pem(File f, int num) throws Exception {
+		PEMParser pem = new PEMParser(new InputStreamReader(new FileInputStream(f)));
+		RSAPrivateCrtKey key = (RSAPrivateCrtKey) pem.readObject();
+		pem.close();
+		send_cert(key.getEncoded(), num);
 	}
 
-	private static void send_key(CardChannel channel, RSAPrivateCrtKey key, int num) throws CardException {
+	public void send_key(RSAPrivateCrtKey key, int num) throws CardException {
 		CommandAPDU cmd = null;
 		cmd = new CommandAPDU(0x80, 0x03, num, 0x01, unsigned(key.getPrimeP()));
 		check(channel.transmit(cmd));
@@ -288,6 +266,66 @@ public class FakeEstEID {
 		check(channel.transmit(cmd));
 		cmd = new CommandAPDU(0x80, 0x03, num, 0x05, unsigned(key.getCrtCoefficient()));
 		check(channel.transmit(cmd));
+		cmd = new CommandAPDU(0x80, 0x03, num, 0x06, unsigned(key.getPrivateExponent()));
+		check(channel.transmit(cmd));
+	}
+
+	public void make_sample_card(FakeEstEIDCA ca, boolean check) throws Exception {
+		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA", BouncyCastleProvider.PROVIDER_NAME);
+		keyGen.initialize(2048);
+		// Generate keys
+		KeyPair auth = keyGen.generateKeyPair();
+		KeyPair sign = keyGen.generateKeyPair();
+		X509Certificate authcert = ca.generateUserCertificate((RSAPublicKey) auth.getPublic(), false, "SIILIPOISS", "UDUS", "10101010005", "kalevipoeg@soome.fi");
+		X509Certificate signcert = ca.generateUserCertificate((RSAPublicKey) sign.getPublic(), true, "SIILIPOISS", "UDUS", "10101010005", "kalevipoeg@soome.fi");
+		if (check) {
+			// Verify softkeys
+			if (!verifyKeypairIntegrity((RSAPrivateCrtKey)auth.getPrivate(), (RSAPublicKey)authcert.getPublicKey())) {
+				throw new RuntimeCryptoException("Cert and key mismatch");
+			}
+			if (!verifyKeypairIntegrity((RSAPrivateCrtKey)sign.getPrivate(), (RSAPublicKey)signcert.getPublicKey())) {
+				throw new RuntimeCryptoException("Cert and key mismatch");
+			}
+		}
+		send_key((RSAPrivateCrtKey) auth.getPrivate(), 1);
+		send_key((RSAPrivateCrtKey) sign.getPrivate(), 2);
+		send_cert(authcert.getEncoded(), 1);
+		send_cert(signcert.getEncoded(), 2);
+
+		CommandAPDU cmd = null;
+		ResponseAPDU resp = null;
+		if (check) {
+			// Verify on-card keys.
+			Cipher verify_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+			SecureRandom r = SecureRandom.getInstance("SHA1PRNG");
+			byte [] rnd = new byte[8];
+
+			r.nextBytes(rnd);
+			cmd = new CommandAPDU(0x00, 0x88, 0x00, 0x00, rnd, 256);
+			resp = channel.transmit(cmd);
+			check(resp);
+			verify_cipher.init(Cipher.DECRYPT_MODE, authcert.getPublicKey());
+			byte[] result = verify_cipher.doFinal(resp.getData());
+			if (!java.util.Arrays.equals(rnd, result)) {
+				throw new RuntimeCryptoException("Card and auth key don't match!");
+			}
+
+			r.nextBytes(rnd);
+			cmd = new CommandAPDU(0x00, 0x2A, 0x9E, 0x9A, rnd, 256);
+			resp = channel.transmit(cmd);
+			check(resp);
+			verify_cipher.init(Cipher.DECRYPT_MODE, signcert.getPublicKey());
+			result = verify_cipher.doFinal(resp.getData());
+			if (!java.util.Arrays.equals(rnd, result)) {
+				throw new RuntimeCryptoException("Card and sign key don't match!");
+			}
+		}
+		// Dump default data file
+		for (int i=0;i<defaultDataFile.length; i++) {
+			cmd = new CommandAPDU(0x80, 0x04, i+1, 0x00, defaultDataFile[i].toUpperCase().getBytes("ISO8859-15"));
+			resp = channel.transmit(cmd);
+			check(resp);
+		}
 	}
 
 	private static byte[] unsigned(BigInteger num) {
