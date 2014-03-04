@@ -266,8 +266,6 @@ public class FakeEstEID {
 		check(channel.transmit(cmd));
 		cmd = new CommandAPDU(0x80, 0x03, num, 0x05, unsigned(key.getCrtCoefficient()));
 		check(channel.transmit(cmd));
-		cmd = new CommandAPDU(0x80, 0x03, num, 0x06, unsigned(key.getPrivateExponent()));
-		check(channel.transmit(cmd));
 	}
 
 	public void make_sample_card(FakeEstEIDCA ca, boolean check) throws Exception {
