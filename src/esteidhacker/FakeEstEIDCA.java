@@ -1,19 +1,19 @@
 /**
  * Copyright (C) 2014 Martin Paljak
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3.0 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 package esteidhacker;
 
@@ -199,7 +199,9 @@ public class FakeEstEIDCA {
 			real = getRealCert("/resources/sk-auth.pem");
 		}
 		serial = real.getSerialNumber();
-		System.out.println("Generating subject: " + real.getSubject());
+		System.out.println("Generating from subject: " + real.getSubject());
+		System.out.println("Generating subject: " + new X500Name(subject).toString());
+
 		JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(real.getIssuer(), serial, startDate, endDate, new X500Name(subject), pubkey);
 
 		@SuppressWarnings("unchecked")

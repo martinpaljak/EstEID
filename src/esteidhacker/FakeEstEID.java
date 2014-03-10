@@ -1,25 +1,27 @@
 /**
  * Copyright (C) 2014 Martin Paljak
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3.0 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 package esteidhacker;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.security.InvalidKeyException;
@@ -50,10 +52,11 @@ import openkms.gp.LoggingCardTerminal;
 import openkms.gp.TerminalManager;
 
 import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.crypto.RuntimeCryptoException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMParser;
-
+import org.bouncycastle.openssl.PEMWriter;
 
 public class FakeEstEID {
 	// options.
@@ -72,6 +75,7 @@ public class FakeEstEID {
 	private static final String OPT_SIGNCERT = "signcert";
 	private static final String OPT_AUTHKEY = "authkey";
 	private static final String OPT_SIGNKEY = "signkey";
+	private static final String OPT_RESIGN = "resign";
 
 
 	private static final String OPT_NEW = "new";
@@ -110,6 +114,7 @@ public class FakeEstEID {
 		parser.accepts(OPT_GENSIGN, "Generate sign key + cert from CA");
 		parser.accepts(OPT_AUTHCERT, "Load auth cert").withRequiredArg().ofType(File.class);
 		parser.accepts(OPT_SIGNCERT, "Load sign cert").withRequiredArg().ofType(File.class);
+		parser.accepts(OPT_RESIGN, "Clone cert").withRequiredArg().ofType(File.class);
 
 		parser.accepts(OPT_FAKE, "Fake a certificate (sign with fake CA)").withRequiredArg().ofType(File.class);
 		// New card generation
@@ -146,8 +151,20 @@ public class FakeEstEID {
 			ca.storeToFile((File)args.valueOf(OPT_GENCA));
 		} else if (args.has(OPT_CA)) {
 			ca.loadFromFile((File)args.valueOf(OPT_CA));
-		} else if (args.has(OPT_NEW) || args.has(OPT_GENAUTH) || args.has(OPT_GENSIGN)) {
+		} else if (args.has(OPT_NEW) || args.has(OPT_GENAUTH) || args.has(OPT_GENSIGN) || args.has(OPT_RESIGN)) {
 			throw new IllegalArgumentException("Need a CA!");
+		}
+
+		if (args.has(OPT_RESIGN)) {
+			File f = (File) args.valueOf(OPT_RESIGN);
+			PEMParser pem = new PEMParser(new FileReader(f));
+			X509Certificate crt = new JcaX509CertificateConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME).getCertificate((X509CertificateHolder) pem.readObject());
+			pem.close();
+
+			X509Certificate newcert = ca.cloneUserCertificate((RSAPublicKey) crt.getPublicKey(), crt);
+			PEMWriter wr = new PEMWriter(new OutputStreamWriter(System.out));
+			wr.writeObject(newcert);
+			wr.close();
 		}
 
 		Card card = null;
