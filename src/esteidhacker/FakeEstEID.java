@@ -34,6 +34,8 @@ import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
 
+import javacard.framework.AID;
+
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
@@ -44,6 +46,7 @@ import javax.smartcardio.CardException;
 import javax.smartcardio.CardTerminal;
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
+import javax.smartcardio.TerminalFactory;
 
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
@@ -58,15 +61,18 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.PEMWriter;
 
+import pro.javacard.applets.FakeEstEIDApplet;
+import pro.javacard.vre.VJCREProvider;
+import pro.javacard.vre.VRE;
+
 public class FakeEstEID {
 	// options.
 	private static final String OPT_VERSION = "version";
 	private static final String OPT_HELP = "help";
 	private static final String OPT_DEBUG = "debug";
 
-	private static final String OPT_GENCA = "genca";
 	private static final String OPT_CA = "ca";
-
+	private static final String OPT_RESIGN = "resign";
 
 	private static final String OPT_GENAUTH = "genauth";
 	private static final String OPT_GENSIGN = "gensign";
@@ -75,13 +81,15 @@ public class FakeEstEID {
 	private static final String OPT_SIGNCERT = "signcert";
 	private static final String OPT_AUTHKEY = "authkey";
 	private static final String OPT_SIGNKEY = "signkey";
-	private static final String OPT_RESIGN = "resign";
+
 
 
 	private static final String OPT_NEW = "new";
 	private static final String OPT_DATA = "data";
 	private static final String OPT_CHECK = "check";
-	private static final String OPT_FAKE = "fake";
+	private static final String OPT_EMULATE = "emulate";
+	private static final String OPT_TEST = "test";
+
 
 	// Other fun constants
 	private static final String[] defaultDataFile = new String[] {"JÄNES-KARVANE", "SIILIPOISS", "Jesús MARIA", "G", "LOL", "01.01.0001", "10101010005", "A0000001", "31.12.2099", "TIIBET", "01.01.2014", "ALALINE", "SEE POLE PÄRIS KAART", " ", " ", " "};
@@ -106,21 +114,21 @@ public class FakeEstEID {
 		parser.acceptsAll(Arrays.asList("h", OPT_HELP), "Show this help");
 		parser.acceptsAll(Arrays.asList("d", OPT_DEBUG), "Debug (show APDU-s)");
 
-		parser.accepts(OPT_CA, "Use CA").withRequiredArg().ofType(File.class);
-		parser.accepts(OPT_GENCA, "Generate CA").withRequiredArg().ofType(File.class);
+		parser.accepts(OPT_CA, "Use or generate CA").withRequiredArg().ofType(File.class);
 
 		// Generate keys and stuff.
 		parser.accepts(OPT_GENAUTH, "Generate auth key + cert from CA");
 		parser.accepts(OPT_GENSIGN, "Generate sign key + cert from CA");
-		parser.accepts(OPT_AUTHCERT, "Load auth cert").withRequiredArg().ofType(File.class);
-		parser.accepts(OPT_SIGNCERT, "Load sign cert").withRequiredArg().ofType(File.class);
-		parser.accepts(OPT_RESIGN, "Clone cert").withRequiredArg().ofType(File.class);
+		parser.accepts(OPT_AUTHCERT, "Load auth cert (PEM)").withRequiredArg().ofType(File.class);
+		parser.accepts(OPT_SIGNCERT, "Load sign cert (PEM)").withRequiredArg().ofType(File.class);
+		parser.accepts(OPT_RESIGN, "Re-sign cert with CA (PEM)").withRequiredArg().ofType(File.class);
 
-		parser.accepts(OPT_FAKE, "Fake a certificate (sign with fake CA)").withRequiredArg().ofType(File.class);
 		// New card generation
 		parser.accepts(OPT_NEW, "Generate a new Mari-Liis Männik (or compatible)");
 		parser.accepts(OPT_DATA, "Edit the personal data file");
 		parser.accepts(OPT_CHECK, "Check generated keys for consistency");
+		parser.accepts(OPT_EMULATE, "Use FakeEstEIDApplet intance inside vJCRE");
+		parser.accepts(OPT_TEST, "Run the EstEID test-suite");
 
 
 		// Parse arguments
@@ -145,12 +153,16 @@ public class FakeEstEID {
 			System.exit(0);
 		}
 
+		// Load or generate a CA
 		FakeEstEIDCA ca = new FakeEstEIDCA();
-		if (args.has(OPT_GENCA)) {
-			ca.generate();
-			ca.storeToFile((File)args.valueOf(OPT_GENCA));
-		} else if (args.has(OPT_CA)) {
-			ca.loadFromFile((File)args.valueOf(OPT_CA));
+		if (args.has(OPT_CA)) {
+			File f = (File)args.valueOf(OPT_CA);
+			if (!f.exists()) {
+				ca.generate();
+				ca.storeToFile(f);
+			} else {
+				ca.loadFromFile(f);
+			}
 		} else if (args.has(OPT_NEW) || args.has(OPT_GENAUTH) || args.has(OPT_GENSIGN) || args.has(OPT_RESIGN)) {
 			throw new IllegalArgumentException("Need a CA!");
 		}
@@ -168,9 +180,22 @@ public class FakeEstEID {
 		}
 
 		Card card = null;
+		CardTerminal term = null;
 		try {
-			// Connect to card
-			CardTerminal term = TerminalManager.getTheReader();
+			if (args.has(OPT_EMULATE)) {
+				// Load FakeEstEIDApplet into vJCRE emulator
+				VRE vre = VRE.getInstance();
+				VRE.debugMode = false;
+
+				AID aid = AID.fromBytes(FakeEstEIDApplet.aid);
+				vre.load(FakeEstEIDApplet.class, aid);
+				vre.install(aid, true);
+				// Establish connection to the applet
+				term = TerminalFactory.getInstance("PC/SC", vre, new VJCREProvider()).terminals().list().get(0);
+			} else {
+				// Connect to a real card
+				term = TerminalManager.getTheReader();
+			}
 
 			if (args.has(OPT_DEBUG))
 				term = LoggingCardTerminal.getInstance(term);
@@ -230,6 +255,11 @@ public class FakeEstEID {
 					cmd = new CommandAPDU(0x80, 0x04, i, 0x00, input.getBytes("ISO8859-15"));
 					check(fake.channel.transmit(cmd));
 				}
+			}
+
+			if (args.has(OPT_TEST)) {
+				EstEID esteid = EstEID.getInstance(card);
+				esteid.crypto_tests(EstEID.PIN1String, EstEID.PIN2String);
 			}
 		} catch (Exception e) {
 			if (TerminalManager.getExceptionMessage(e) != null) {
