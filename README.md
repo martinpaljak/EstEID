@@ -10,21 +10,21 @@ Java ~~utilities~~ source code for everything and anything related to EstEID:
 ## Usage
 * Fetch and build the software (requires Unix-like OS)
 
-      git clone https://github.com/martinpaljak/esteidhacker.git
-      cd esteidhacker
-      ant
+        git clone https://github.com/martinpaljak/esteidhacker.git
+        cd esteidhacker
+        ant
 
-* Create a new FakeEstEID card (requires a supported JavaCard):
+* Create a new FakeEstEID card (requires a [supported JavaCard](https://github.com/martinpaljak/GlobalPlatform/wiki/TestedCards)):
         
-      java -jar esteid.jar -ca fake.ca -new
+        java -jar esteid.jar -ca fake.ca -new
 
 * Run EstEID test-suite against a real card (via PC/SC):
 
-      java -jar esteid.jar -test
+        java -jar esteid.jar -test
 
 * Run EstEID test-suite against an emulated card (read: test the FakeEstEIDApplet):
 
-      java -jar esteid.jar -emulate -new -test
+        java -jar esteid.jar -emulate -new -test
 
 ## Dependencies
 * [FakeEstEIDApplet](https://github.com/martinpaljak/AppletPlayground/wiki/FakeEstEID) from [AppletPlayground](https://github.com/martinpaljak/AppletPlayground#applet-playground) (MIT)
@@ -38,9 +38,13 @@ Mixed LGPL/MIT, please check individual files! Other options available upon requ
 
 
 ## Contact
-
 * martin@martinpaljak.net
 
+## Upcoming features
+* Planned:
+  * Pinpad support for PC/SC readers
+* Wishlist:
+  * A GUI maybe, not unlike qesteidutil?
 
 ## Similar projects
 EstEID card access through javax.smartcardio
