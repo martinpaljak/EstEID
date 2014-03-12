@@ -109,7 +109,7 @@ public final class EstEID {
 
 	// should be 255 all the time!
 	public final static int chunksize = 250;
-	public enum CardType {
+	public static enum CardType {
 		MICARDO, DigiID, JavaCard2011, AnyJavaCard
 	}
 
@@ -182,6 +182,9 @@ public final class EstEID {
 	public CardType getType() {
 		return type;
 	}
+	public Card getCard() {
+		return card;
+	}
 
 	// PIN handling
 	public void verify(PIN pin, String value) throws WrongPINException, CardException {
@@ -252,7 +255,15 @@ public final class EstEID {
 		byte[] bb = new byte[bytes];
 		for (int i = 0; i<= (bytes / chunksize); i++) {
 			final int offset = i*chunksize;
-			ResponseAPDU r = check(transmit(new CommandAPDU(0x00, INS_READ_BINARY, offset>>8, offset & 0xFF, 256)));
+			ResponseAPDU r = transmit(new CommandAPDU(0x00, INS_READ_BINARY, offset>>8, offset & 0xFF, 256));
+			try {
+				check(r);
+			} catch (EstEIDException e) {
+				// DigiID truncates on Le==0x00
+				if (e.getSW() == 0x6282 && type != CardType.DigiID) {
+					throw e;
+				}
+			}
 			System.arraycopy(r.getData(), 0, bb, offset, r.getData().length);
 		}
 		return bb;
@@ -313,18 +324,24 @@ public final class EstEID {
 		se_restore(6);
 		verify(PIN1, pin);
 		// Some magic - decryption key reference
+		// TODO: discover this from FID 0x0033
 		se_keyref(0xB8, 0x1100);
 		// prepend 0
-		byte[] newdata = org.bouncycastle.util.Arrays.prepend(data, (byte)0);
-		System.out.println(GPUtils.byteArrayToString(newdata));
-		// split in two
-		byte[] d1 = Arrays.copyOfRange(newdata, 0, chunksize);
-		byte[] d2 = Arrays.copyOfRange(newdata, chunksize, newdata.length);
-		// send in two parts with chaining
-		CommandAPDU cmd = new CommandAPDU(0x10, INS_PERFORM_SECURITY_OPERATION, P1P2_PSO_DECRYPT>>8, P1P2_PSO_DECRYPT & 0xFF, d1, 256);
-		check(transmit(cmd));
-		cmd = new CommandAPDU(0x00, INS_PERFORM_SECURITY_OPERATION, P1P2_PSO_DECRYPT>>8, P1P2_PSO_DECRYPT & 0xFF, d2, 256);
-		return check(transmit(cmd)).getData();
+		byte[] d = org.bouncycastle.util.Arrays.prepend(data, (byte)0);
+
+		if (d.length > chunksize) {
+			// split in two
+			byte[] d1 = Arrays.copyOfRange(d, 0, chunksize);
+			byte[] d2 = Arrays.copyOfRange(d, chunksize, d.length);
+			// send in two parts with chaining
+			CommandAPDU cmd = new CommandAPDU(0x10, INS_PERFORM_SECURITY_OPERATION, P1P2_PSO_DECRYPT>>8, P1P2_PSO_DECRYPT & 0xFF, d1, 256);
+			check(transmit(cmd));
+			cmd = new CommandAPDU(0x00, INS_PERFORM_SECURITY_OPERATION, P1P2_PSO_DECRYPT>>8, P1P2_PSO_DECRYPT & 0xFF, d2, 256);
+			return check(transmit(cmd)).getData();
+		}  else {
+			CommandAPDU cmd = new CommandAPDU(0x00, INS_PERFORM_SECURITY_OPERATION, P1P2_PSO_DECRYPT>>8, P1P2_PSO_DECRYPT & 0xFF, d, 256);
+			return check(transmit(cmd)).getData();
+		}
 	}
 
 
@@ -346,7 +363,7 @@ public final class EstEID {
 		}
 
 		public String toString() {
-			return "Got bad SW: " + sw;
+			return "Card returned: " + Integer.toHexString(sw).toUpperCase();
 		}
 		public int getSW() {
 			return sw;
@@ -367,9 +384,7 @@ public final class EstEID {
 
 	public void crypto_tests(String pin1, String pin2) throws NoSuchAlgorithmException, NoSuchPaddingException, EstEIDException, CardException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
 		X509Certificate authcert = readAuthCert();
-		System.out.println("Authcert " + authcert.getSubjectX500Principal().getName());
-		X509Certificate signcert = readSignCert();
-		System.out.println("Signcert " + signcert.getSubjectX500Principal().getName());
+		System.out.println("Authcert " + authcert.getSubjectX500Principal().getName("RFC1779"));
 
 		// Verify keys vs certificates
 		Cipher verify_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
@@ -381,13 +396,8 @@ public final class EstEID {
 		byte[] result = verify_cipher.doFinal(authenticate(rnd, pin1));
 		if (!java.util.Arrays.equals(rnd, result)) {
 			throw new RuntimeCryptoException("Card and auth key don't match!");
-		}
-
-		r.nextBytes(rnd);
-		verify_cipher.init(Cipher.DECRYPT_MODE, signcert.getPublicKey());
-		result = verify_cipher.doFinal(sign(rnd, pin2));
-		if (!java.util.Arrays.equals(rnd, result)) {
-			throw new RuntimeCryptoException("Card and sign key don't match!");
+		} else {
+			System.out.println("ENCRYPT: OK");
 		}
 
 		r.nextBytes(rnd);
@@ -395,6 +405,23 @@ public final class EstEID {
 		result = verify_cipher.doFinal(rnd);
 		if (!java.util.Arrays.equals(rnd, decrypt(result, pin1))) {
 			throw new RuntimeCryptoException("Card and auth key don't match on decryption!");
+		} else {
+			System.out.println("DECRYPT: OK");
 		}
+
+		// Signature key
+		X509Certificate signcert = readSignCert();
+		System.out.println("Signcert " + signcert.getSubjectX500Principal().getName("RFC1779"));
+
+		r.nextBytes(rnd);
+		verify_cipher.init(Cipher.DECRYPT_MODE, signcert.getPublicKey());
+		result = verify_cipher.doFinal(sign(rnd, pin2));
+		if (!java.util.Arrays.equals(rnd, result)) {
+			throw new RuntimeCryptoException("Card and sign key don't match!");
+		} else {
+			System.out.println("ENCRYPT: OK");
+		}
+
+
 	}
 }

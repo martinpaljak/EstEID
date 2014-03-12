@@ -51,6 +51,7 @@ import javax.smartcardio.TerminalFactory;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import openkms.gp.GPUtils;
 import openkms.gp.LoggingCardTerminal;
 import openkms.gp.TerminalManager;
 
@@ -64,6 +65,7 @@ import org.bouncycastle.openssl.PEMWriter;
 import pro.javacard.applets.FakeEstEIDApplet;
 import pro.javacard.vre.VJCREProvider;
 import pro.javacard.vre.VRE;
+import esteidhacker.EstEID.CardType;
 
 public class FakeEstEID {
 	// options.
@@ -243,10 +245,18 @@ public class FakeEstEID {
 			if (args.has(OPT_DEBUG))
 				term = LoggingCardTerminal.getInstance(term);
 
-			card = term.connect("*");
-			card.beginExclusive();
+			EstEID esteid = EstEID.getInstance(term);
 
-			FakeEstEID fake = new FakeEstEID(card);
+			if (args.has(OPT_VERBOSE)) {
+				System.out.println("ATR:  " + GPUtils.byteArrayToString(esteid.getCard().getATR().getBytes()));
+				System.out.println("Type: " + esteid.getType());
+			}
+
+			FakeEstEID fake = null;
+			if (esteid.getType() == CardType.AnyJavaCard) {
+				card = term.connect("*");
+				fake = new FakeEstEID(card);
+			}
 
 			if (args.has(OPT_AUTHCERT)) {
 				File f = (File) args.valueOf(OPT_AUTHCERT);
@@ -301,10 +311,6 @@ public class FakeEstEID {
 			}
 
 			if (args.has(OPT_TEST)) {
-				EstEID esteid = EstEID.getInstance(term);
-				if (args.has(OPT_VERBOSE)) {
-					System.out.println("Card type: " + esteid.getType());
-				}
 				esteid.crypto_tests(pin1, pin2);
 			}
 		} catch (Exception e) {
@@ -315,7 +321,6 @@ public class FakeEstEID {
 			}
 		} finally {
 			if (card != null) {
-				card.endExclusive();
 				TerminalManager.disconnect(card, true);
 			}
 		}
