@@ -70,10 +70,10 @@ public class FakeEstEID {
 	private static final String OPT_VERSION = "version";
 	private static final String OPT_HELP = "help";
 	private static final String OPT_DEBUG = "debug";
+	private static final String OPT_VERBOSE = "verbose";
 
 	private static final String OPT_CA = "ca";
 	private static final String OPT_RESIGN = "resign";
-
 	private static final String OPT_GENAUTH = "genauth";
 	private static final String OPT_GENSIGN = "gensign";
 
@@ -82,23 +82,31 @@ public class FakeEstEID {
 	private static final String OPT_AUTHKEY = "authkey";
 	private static final String OPT_SIGNKEY = "signkey";
 
-
-
 	private static final String OPT_NEW = "new";
-	private static final String OPT_DATA = "data";
 	private static final String OPT_CHECK = "check";
+
+	private static final String OPT_DATA = "data";
+
 	private static final String OPT_EMULATE = "emulate";
 	private static final String OPT_TEST = "test";
+
+	private static final String OPT_PIN1 = "pin1";
+	private static final String OPT_PIN2 = "pin2";
+	private static final String OPT_PUK = "puk";
+
 
 
 	// Other fun constants
 	private static final String[] defaultDataFile = new String[] {"JÄNES-KARVANE", "SIILIPOISS", "Jesús MARIA", "G", "LOL", "01.01.0001", "10101010005", "A0000001", "31.12.2099", "TIIBET", "01.01.2014", "ALALINE", "SEE POLE PÄRIS KAART", " ", " ", " "};
 	public static final byte[] aid = new byte[] {(byte)0xD2, (byte)0x33, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x45, (byte)0x73, (byte)0x74, (byte)0x45, (byte)0x49, (byte)0x44, (byte)0x20, (byte)0x76, (byte)0x33, (byte)0x35};
 
-	CardChannel channel;
+	private final Card card;
+	private final CardChannel channel;
 
-	public FakeEstEID(CardChannel ch) throws CardException {
-		channel = ch;
+	public FakeEstEID(Card card) throws CardException {
+		this.card = card;
+		this.channel = card.getBasicChannel();
+
 		// Select the AID (required for HCE/multiapp)
 		check(channel.transmit(new CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid)));
 	}
@@ -106,6 +114,10 @@ public class FakeEstEID {
 
 
 	public static void main(String argv[]) throws Exception {
+		String pin1 = EstEID.PIN1String;
+		String pin2 = EstEID.PIN2String;
+		String puk = EstEID.PUKString;
+
 		OptionSet args = null;
 		OptionParser parser = new OptionParser();
 
@@ -113,22 +125,36 @@ public class FakeEstEID {
 		parser.accepts(OPT_VERSION, "Show information about the program");
 		parser.acceptsAll(Arrays.asList("h", OPT_HELP), "Show this help");
 		parser.acceptsAll(Arrays.asList("d", OPT_DEBUG), "Debug (show APDU-s)");
+		parser.acceptsAll(Arrays.asList("v", OPT_VERBOSE), "Be verbose");
 
-		parser.accepts(OPT_CA, "Use or generate CA").withRequiredArg().ofType(File.class);
+		// FakeEstEIDCA interface
+		parser.accepts(OPT_CA, "Use or generate a CA").withRequiredArg().ofType(File.class);
+		parser.accepts(OPT_RESIGN, "Re-sign cert (PEM) with CA").withRequiredArg().ofType(File.class);
 
-		// Generate keys and stuff.
-		parser.accepts(OPT_GENAUTH, "Generate auth key + cert from CA");
-		parser.accepts(OPT_GENSIGN, "Generate sign key + cert from CA");
+		// Generate and load keys/certificates
+		parser.accepts(OPT_GENAUTH, "Generate and load auth key + cert from CA");
+		parser.accepts(OPT_GENSIGN, "Generate and load sign key + cert from CA");
+
+		// Load keys and certificates.
 		parser.accepts(OPT_AUTHCERT, "Load auth cert (PEM)").withRequiredArg().ofType(File.class);
 		parser.accepts(OPT_SIGNCERT, "Load sign cert (PEM)").withRequiredArg().ofType(File.class);
-		parser.accepts(OPT_RESIGN, "Re-sign cert with CA (PEM)").withRequiredArg().ofType(File.class);
+		parser.accepts(OPT_AUTHKEY, "Load auth key (PEM)").withRequiredArg().ofType(File.class);
+		parser.accepts(OPT_SIGNKEY, "Load sign key (PEM)").withRequiredArg().ofType(File.class);
 
 		// New card generation
 		parser.accepts(OPT_NEW, "Generate a new Mari-Liis Männik (or compatible)");
-		parser.accepts(OPT_DATA, "Edit the personal data file");
 		parser.accepts(OPT_CHECK, "Check generated keys for consistency");
+
+		parser.accepts(OPT_DATA, "Edit the personal data file");
+
 		parser.accepts(OPT_EMULATE, "Use FakeEstEIDApplet intance inside vJCRE");
 		parser.accepts(OPT_TEST, "Run the EstEID test-suite");
+
+		parser.accepts(OPT_PIN1, "PIN1 of the tested card").withRequiredArg();
+		parser.accepts(OPT_PIN2, "PIN2 of the tested card").withRequiredArg();
+		parser.accepts(OPT_PUK, "PUK of the tested card").withRequiredArg();
+
+
 
 
 		// Parse arguments
@@ -145,6 +171,11 @@ public class FakeEstEID {
 			System.err.println();
 			parser.printHelpOn(System.err);
 			System.exit(1);
+		}
+
+		// Do the work, based on arguments
+		if (args.has(OPT_VERSION)) {
+			System.out.println("EstEID hacker v0.1");
 		}
 
 		// Do the work, based on arguments
@@ -167,6 +198,16 @@ public class FakeEstEID {
 			throw new IllegalArgumentException("Need a CA!");
 		}
 
+		if (args.has(OPT_PIN1)) {
+			pin1 = (String) args.valueOf(OPT_PIN1);
+		}
+		if (args.has(OPT_PIN2)) {
+			pin2 = (String) args.valueOf(OPT_PIN2);
+		}
+		if (args.has(OPT_PUK)) {
+			puk = (String) args.valueOf(OPT_PUK);
+		}
+
 		if (args.has(OPT_RESIGN)) {
 			File f = (File) args.valueOf(OPT_RESIGN);
 			PEMParser pem = new PEMParser(new FileReader(f));
@@ -179,8 +220,10 @@ public class FakeEstEID {
 			wr.close();
 		}
 
+
 		Card card = null;
 		CardTerminal term = null;
+
 		try {
 			if (args.has(OPT_EMULATE)) {
 				// Load FakeEstEIDApplet into vJCRE emulator
@@ -202,9 +245,9 @@ public class FakeEstEID {
 
 			card = term.connect("*");
 			card.beginExclusive();
-			CardChannel ch = card.getBasicChannel();
 
-			FakeEstEID fake = new FakeEstEID(ch);
+			FakeEstEID fake = new FakeEstEID(card);
+
 			if (args.has(OPT_AUTHCERT)) {
 				File f = (File) args.valueOf(OPT_AUTHCERT);
 				fake.send_cert_pem(f, 1);
@@ -258,8 +301,11 @@ public class FakeEstEID {
 			}
 
 			if (args.has(OPT_TEST)) {
-				EstEID esteid = EstEID.getInstance(card);
-				esteid.crypto_tests(EstEID.PIN1String, EstEID.PIN2String);
+				EstEID esteid = EstEID.getInstance(term);
+				if (args.has(OPT_VERBOSE)) {
+					System.out.println("Card type: " + esteid.getType());
+				}
+				esteid.crypto_tests(pin1, pin2);
 			}
 		} catch (Exception e) {
 			if (TerminalManager.getExceptionMessage(e) != null) {
@@ -274,20 +320,25 @@ public class FakeEstEID {
 			}
 		}
 	}
+
 	public void send_cert(byte[] cert, int num) throws Exception {
 		int chunksize = 240; // was:253
+		card.beginExclusive();
+		try {
+			byte [] c = org.bouncycastle.util.Arrays.append(cert, (byte)0x80);
+			for (int i = 0; i<= (c.length / chunksize); i++) {
+				byte []d = new byte[2+chunksize];
+				int off = i*chunksize;
 
-		byte [] c = org.bouncycastle.util.Arrays.append(cert, (byte)0x80);
-		for (int i = 0; i<= (c.length / chunksize); i++) {
-			byte []d = new byte[2+chunksize];
-			int off = i*chunksize;
-
-			d[0] = (byte) ((off & 0xFF00) >>> 8);
-			d[1] = (byte) (off & 0xFF);
-			byte[] chunk = Arrays.copyOfRange(c, i*chunksize, i*chunksize+chunksize);
-			System.arraycopy(chunk, 0, d, 2, chunk.length);
-			CommandAPDU cmd = new CommandAPDU(0x80, 0x02, num, 0x00, d);
-			check(channel.transmit(cmd));
+				d[0] = (byte) ((off & 0xFF00) >>> 8);
+				d[1] = (byte) (off & 0xFF);
+				byte[] chunk = Arrays.copyOfRange(c, i*chunksize, i*chunksize+chunksize);
+				System.arraycopy(chunk, 0, d, 2, chunk.length);
+				CommandAPDU cmd = new CommandAPDU(0x80, 0x02, num, 0x00, d);
+				check(channel.transmit(cmd));
+			}
+		} finally {
+			card.endExclusive();
 		}
 	}
 
@@ -305,17 +356,22 @@ public class FakeEstEID {
 	}
 
 	public void send_key(RSAPrivateCrtKey key, int num) throws CardException {
-		CommandAPDU cmd = null;
-		cmd = new CommandAPDU(0x80, 0x03, num, 0x01, unsigned(key.getPrimeP()));
-		check(channel.transmit(cmd));
-		cmd = new CommandAPDU(0x80, 0x03, num, 0x02, unsigned(key.getPrimeQ()));
-		check(channel.transmit(cmd));
-		cmd = new CommandAPDU(0x80, 0x03, num, 0x03, unsigned(key.getPrimeExponentP()));
-		check(channel.transmit(cmd));
-		cmd = new CommandAPDU(0x80, 0x03, num, 0x04, unsigned(key.getPrimeExponentQ()));
-		check(channel.transmit(cmd));
-		cmd = new CommandAPDU(0x80, 0x03, num, 0x05, unsigned(key.getCrtCoefficient()));
-		check(channel.transmit(cmd));
+		card.beginExclusive();
+		try {
+			CommandAPDU cmd = null;
+			cmd = new CommandAPDU(0x80, 0x03, num, 0x01, unsigned(key.getPrimeP()));
+			check(channel.transmit(cmd));
+			cmd = new CommandAPDU(0x80, 0x03, num, 0x02, unsigned(key.getPrimeQ()));
+			check(channel.transmit(cmd));
+			cmd = new CommandAPDU(0x80, 0x03, num, 0x03, unsigned(key.getPrimeExponentP()));
+			check(channel.transmit(cmd));
+			cmd = new CommandAPDU(0x80, 0x03, num, 0x04, unsigned(key.getPrimeExponentQ()));
+			check(channel.transmit(cmd));
+			cmd = new CommandAPDU(0x80, 0x03, num, 0x05, unsigned(key.getCrtCoefficient()));
+			check(channel.transmit(cmd));
+		} finally {
+			card.endExclusive();
+		}
 	}
 
 	public void make_sample_card(FakeEstEIDCA ca, boolean check) throws Exception {
