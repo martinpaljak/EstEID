@@ -50,7 +50,6 @@ import org.bouncycastle.crypto.RuntimeCryptoException;
 
 public final class EstEID {
 
-	// Various constants
 	// Commands
 	public static int INS_SELECT = 0xA4;
 	public static int INS_READ_BINARY = 0xB0;
@@ -67,30 +66,65 @@ public final class EstEID {
 	public static int P1P2_PSO_SIGN = 0x9E9A;
 	public static int P1P2_PSO_DECRYPT = 0x8086;
 
-
 	// File identifiers
-	private final static int FID_3F00 = 0x3F00;
-	private final static int FID_0013 = 0x0013;
-	private final static int FID_0016 = 0x0016;
-	private final static int FID_EEEE = 0xEEEE;
-	private final static int FID_5044 = 0x5044;
-	private final static int FID_AACE = 0xAACE;
-	private final static int FID_DDCE = 0xDDCE;
-	private final static int FID_0033 = 0x0033;
+	public final static int FID_3F00 = 0x3F00;
+	public final static int FID_0013 = 0x0013;
+	public final static int FID_0016 = 0x0016;
+	public final static int FID_EEEE = 0xEEEE;
+	public final static int FID_5044 = 0x5044;
+	public final static int FID_AACE = 0xAACE;
+	public final static int FID_DDCE = 0xDDCE;
+	public final static int FID_0033 = 0x0033;
 
+	// Peronal data file records
+	public enum PersonalData {
+		SURNAME(1),
+		GIVEN_NAMES1(2),
+		GIVEN_NAMES2(3),
+		SEX(4),
+		CITIZENSHIP(5),
+		DATE_OF_BIRTH(6),
+		PERSONAL_ID(7),
+		DOCUMENT_NR(8),
+		EXPIRY_DATE(9),
+		PLACE_OF_BIRTH(10),
+		ISSUING_DATE(11),
+		PERMIT_TYPE(12),
+		REMARK1(13),
+		REMARK2(14),
+		REMARK3(15),
+		REMARK4(16);
+
+		private final int rec;
+
+		private PersonalData(int recno) {
+			this.rec = recno;
+		}
+		// Record in file
+		public byte getRec() {
+			return (byte) rec;
+		}
+	}
 	// PIN codes
 	public enum PIN {
-		PIN1(1), PIN2(2), PUK(0);
+		PIN1(1, 1), PIN2(2, 2), PUK(0, 3);
 
 		private final int ref;
-
-		private PIN(int ref) {
+		private final int rec;
+		private PIN(int ref, int rec) {
 			this.ref = ref;
+			this.rec = rec;
 		}
-		public int getRef() {
-			return ref;
+		// Reference in VERIFY et al
+		public byte getRef() {
+			return (byte) ref;
+		}
+		// Record in counter file
+		public byte getRec() {
+			return (byte) rec;
 		}
 	};
+
 	// Shorthands
 	public static final PIN PIN1 = PIN.PIN1;
 	public static final PIN PIN2 = PIN.PIN2;
@@ -104,56 +138,75 @@ public final class EstEID {
 	public static final String PUKString = "17258403";
 	public static final byte[] testPUK = PUKString.getBytes();
 
-	// AID of modern JavaCard
-	public static final byte[] aid = new byte[] {(byte)0xD2, (byte)0x33, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x45, (byte)0x73, (byte)0x74, (byte)0x45, (byte)0x49, (byte)0x44, (byte)0x20, (byte)0x76, (byte)0x33, (byte)0x35};
-
 	// should be 255 all the time!
 	public final static int chunksize = 250;
+
+	// original cold
+	public final static ATR micardo_cold_atr = new ATR(GPUtils.stringToByteArray("3bfe9400ff80b1fa451f034573744549442076657220312e3043"));
+	// original warm
+	public final static ATR micardo_warm_atr = new ATR(GPUtils.stringToByteArray("3b6e00ff4573744549442076657220312e30"));
+	// 2006 update cold
+	public final static ATR micardo_2006_cold_atr = new ATR(GPUtils.stringToByteArray("3bde18ffc080b1fe451f034573744549442076657220312e302b"));
+	// 2006 update warm
+	public final static ATR micardo_2006_warm_atr = new ATR(GPUtils.stringToByteArray("3b5e11ff4573744549442076657220312e30"));
+	// DigiID cold. Warm is the same original cold above.
+	public final static ATR digiid_cold_atr = new ATR(GPUtils.stringToByteArray("3b6e00004573744549442076657220312e30"));
+	// 2011 cold
+	public final static ATR javacard_2011_cold_atr = new ATR(GPUtils.stringToByteArray("3bfe1800008031fe454573744549442076657220312e30a8"));
+	// 2011 warm
+	public final static ATR javacard_2011_warm_atr = new ATR(GPUtils.stringToByteArray("3bfe1800008031fe45803180664090a4162a00830f9000ef"));
+
+
+
+	// Card identification
+	// AID of modern JavaCard app (FakeEstEID et al)
+	public static final byte[] aid = new byte[] {(byte)0xD2, (byte)0x33, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x45, (byte)0x73, (byte)0x74, (byte)0x45, (byte)0x49, (byte)0x44, (byte)0x20, (byte)0x76, (byte)0x33, (byte)0x35};
+
 	public static enum CardType {
 		MICARDO, DigiID, JavaCard2011, AnyJavaCard
 	}
 
 	public static Map<ATR, CardType> knownATRs = new HashMap<ATR, CardType>();
 	static {
-		// original cold
-		knownATRs.put(new ATR(GPUtils.stringToByteArray("3bfe9400ff80b1fa451f034573744549442076657220312e3043")), CardType.MICARDO);
-		// original warm
-		knownATRs.put(new ATR(GPUtils.stringToByteArray("3b6e00ff4573744549442076657220312e30")), CardType.MICARDO);
-		// 2006 update cold
-		knownATRs.put(new ATR(GPUtils.stringToByteArray("3bde18ffc080b1fe451f034573744549442076657220312e302b")), CardType.MICARDO);
-		// 2006 update warm
-		knownATRs.put(new ATR(GPUtils.stringToByteArray("3b5e11ff4573744549442076657220312e30")), CardType.MICARDO);
-		// DigiID cold. Warm is the same as above.
-		knownATRs.put(new ATR(GPUtils.stringToByteArray("3b6e00004573744549442076657220312e30")), CardType.DigiID);
-		// 2011 cold
-		knownATRs.put(new ATR(GPUtils.stringToByteArray("3bfe1800008031fe454573744549442076657220312e30a8")), CardType.JavaCard2011);
+		knownATRs.put(micardo_cold_atr, CardType.MICARDO);
+		knownATRs.put(micardo_warm_atr, CardType.MICARDO);
+		knownATRs.put(micardo_2006_cold_atr, CardType.MICARDO);
+		knownATRs.put(micardo_2006_warm_atr, CardType.MICARDO);
+		knownATRs.put(digiid_cold_atr, CardType.DigiID);
+		knownATRs.put(javacard_2011_cold_atr, CardType.JavaCard2011);
+		knownATRs.put(javacard_2011_warm_atr, CardType.JavaCard2011);
 	}
 
 	// Instance fields
-	private X509Certificate auth = null;
-	private X509Certificate sign = null;
-
 	private Card card;
-	private final CardTerminal terminal;
+	private CardTerminal terminal;
 	private CardType type = null;
 
+	private int currentFID = FID_3F00;
 
-	private EstEID(CardTerminal t) {
-		terminal = t;
-	}
+	private EstEID() {}
 
 	public static EstEID getInstance(CardTerminal t) throws CardException {
-		EstEID eid = new EstEID(t);
+		EstEID eid = new EstEID();
+		eid.terminal = t;
 		eid.identify();
+		return eid;
+	}
+
+	public static EstEID getInstance(Card c, CardType t) throws CardException {
+		EstEID eid = new EstEID();
+		eid.card = c;
+		eid.type = t;
 		return eid;
 	}
 
 	private void identify() throws CardException {
 		card = terminal.connect("*");
+		card.beginExclusive();
 		ATR atr = card.getATR();
 		if (knownATRs.containsKey(atr)) {
-			// FIXME: refactor. atr mnemonics
-			if (atr.equals(new ATR(GPUtils.stringToByteArray("3bfe9400ff80b1fa451f034573744549442076657220312e3043")))) {
+			// DigiID is a broken card
+			if (atr.equals(micardo_cold_atr)) {
 				// Check if DigiID or Micardo
 				ResponseAPDU resp = transmit(new CommandAPDU(0x00, 0xA4, 0x02, 0x00, new byte[] {0x3F, 0x00}, 256));
 				if (resp.getSW() == 0x9000) {
@@ -161,22 +214,27 @@ public final class EstEID {
 					type = CardType.DigiID;
 					return;
 				}
-				if (resp.getSW() == 0x6A83) {
+				if (resp.getSW() == 0x6A83 || resp.getSW() == 0x6D00) {
 					// Locked up DigiID, reset card
 					TerminalManager.disconnect(card, true);
 					card = terminal.connect("*");
+					card.beginExclusive();
 					type = CardType.DigiID;
 					return;
 				}
 			}
 			type = knownATRs.get(atr);
+			return;
 		}
 
-		// Check for generic Applets if ATR is unknown
+		// Check for generic modern Applet if ATR is unknown
 		ResponseAPDU resp = transmit(new CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid));
 		if (resp.getSW() == 0x9000) {
 			type = CardType.AnyJavaCard;
+			return;
 		}
+		card.endExclusive();
+		throw new RuntimeException("Could not identify EstEID card!");
 	}
 
 	public CardType getType() {
@@ -236,6 +294,26 @@ public final class EstEID {
 		}
 	}
 
+	public Map<PIN, Byte> getPINCounters() throws CardException {
+		select(FID_3F00);
+		select(FID_0016);
+		HashMap<PIN, Byte> m = new HashMap<PIN, Byte>();
+		// Ugly, should parse.
+		for (PIN p: PIN.values()) {
+			m.put(p, read_record(p.getRec())[5]);
+		}
+		return m;
+	}
+
+	public String getPersonalData(PersonalData d) throws CardException {
+		if (currentFID != FID_5044) {
+			select(FID_3F00);
+			select(FID_EEEE);
+			select(FID_5044);
+		}
+		return new String(read_record(d.getRec())).trim();
+	}
+
 	// File handling
 	public void select(int fid) throws CardException {
 		byte [] fidbytes = new byte[2];
@@ -249,9 +327,10 @@ public final class EstEID {
 		} else { // Select EF
 			check(transmit(new CommandAPDU(0x00, INS_SELECT, 0x02, 0x0C, fidbytes)));
 		}
+		currentFID = fid;
 	}
 
-	public byte[] read(final int bytes) throws CardException {
+	public byte[] read_file(final int bytes) throws CardException {
 		byte[] bb = new byte[bytes];
 		for (int i = 0; i<= (bytes / chunksize); i++) {
 			final int offset = i*chunksize;
@@ -259,7 +338,7 @@ public final class EstEID {
 			try {
 				check(r);
 			} catch (EstEIDException e) {
-				// DigiID truncates on Le==0x00
+				// DigiID truncates on Le==0x00. Ignore
 				if (e.getSW() == 0x6282 && type != CardType.DigiID) {
 					throw e;
 				}
@@ -269,6 +348,10 @@ public final class EstEID {
 		return bb;
 	}
 
+	public byte[] read_record(final byte recno) throws CardException {
+		ResponseAPDU r = transmit(new CommandAPDU(0x00, INS_READ_RECORD, recno, 0x04, 256));
+		return check(r).getData();
+	}
 
 	private X509Certificate readCertificate(int fid) throws EstEIDException, CardException {
 		select(FID_3F00);
@@ -277,7 +360,7 @@ public final class EstEID {
 
 		try {
 			CertificateFactory cf = CertificateFactory.getInstance("X509");
-			return (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(read(0x600)));
+			return (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(read_file(0x600)));
 		} catch (CertificateException e) {
 			throw new RuntimeException(e);
 		}
@@ -329,10 +412,12 @@ public final class EstEID {
 		// prepend 0
 		byte[] d = org.bouncycastle.util.Arrays.prepend(data, (byte)0);
 
+		// The logical limit here is 255
 		if (d.length > chunksize) {
 			// split in two
-			byte[] d1 = Arrays.copyOfRange(d, 0, chunksize);
-			byte[] d2 = Arrays.copyOfRange(d, chunksize, d.length);
+			int split = d.length/2;
+			byte[] d1 = Arrays.copyOfRange(d, 0, split);
+			byte[] d2 = Arrays.copyOfRange(d, split, d.length);
 			// send in two parts with chaining
 			CommandAPDU cmd = new CommandAPDU(0x10, INS_PERFORM_SECURITY_OPERATION, P1P2_PSO_DECRYPT>>8, P1P2_PSO_DECRYPT & 0xFF, d1, 256);
 			check(transmit(cmd));
@@ -344,6 +429,16 @@ public final class EstEID {
 		}
 	}
 
+	public void close() {
+		if (card != null) {
+			try {
+				card.endExclusive();
+				TerminalManager.disconnect(card, true);
+			} catch (CardException e) {
+				e.printStackTrace();
+			}
+		}
+	}
 
 	private ResponseAPDU transmit(CommandAPDU cmd) throws CardException {
 		return card.getBasicChannel().transmit(cmd);
@@ -384,12 +479,12 @@ public final class EstEID {
 
 	public void crypto_tests(String pin1, String pin2) throws NoSuchAlgorithmException, NoSuchPaddingException, EstEIDException, CardException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
 		X509Certificate authcert = readAuthCert();
-		System.out.println("Authcert " + authcert.getSubjectX500Principal().getName("RFC1779"));
+		System.out.println("Auth cert " + authcert.getSubjectX500Principal().getName("RFC1779"));
 
 		// Verify keys vs certificates
 		Cipher verify_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
 		SecureRandom r = SecureRandom.getInstance("SHA1PRNG");
-		byte [] rnd = new byte[8];
+		byte [] rnd = new byte[20];
 
 		r.nextBytes(rnd);
 		verify_cipher.init(Cipher.DECRYPT_MODE, authcert.getPublicKey());
@@ -411,7 +506,7 @@ public final class EstEID {
 
 		// Signature key
 		X509Certificate signcert = readSignCert();
-		System.out.println("Signcert " + signcert.getSubjectX500Principal().getName("RFC1779"));
+		System.out.println("Sign cert " + signcert.getSubjectX500Principal().getName("RFC1779"));
 
 		r.nextBytes(rnd);
 		verify_cipher.init(Cipher.DECRYPT_MODE, signcert.getPublicKey());
@@ -421,7 +516,5 @@ public final class EstEID {
 		} else {
 			System.out.println("ENCRYPT: OK");
 		}
-
-
 	}
 }

@@ -33,6 +33,7 @@ import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
+import java.util.Map;
 
 import javacard.framework.AID;
 
@@ -66,6 +67,8 @@ import pro.javacard.applets.FakeEstEIDApplet;
 import pro.javacard.vre.VJCREProvider;
 import pro.javacard.vre.VRE;
 import esteidhacker.EstEID.CardType;
+import esteidhacker.EstEID.PIN;
+import esteidhacker.EstEID.PersonalData;
 
 public class FakeEstEID {
 	// options.
@@ -73,6 +76,7 @@ public class FakeEstEID {
 	private static final String OPT_HELP = "help";
 	private static final String OPT_DEBUG = "debug";
 	private static final String OPT_VERBOSE = "verbose";
+	private static final String OPT_INFO = "info";
 
 	private static final String OPT_CA = "ca";
 	private static final String OPT_RESIGN = "resign";
@@ -105,12 +109,17 @@ public class FakeEstEID {
 	private final Card card;
 	private final CardChannel channel;
 
-	public FakeEstEID(Card card) throws CardException {
+	private FakeEstEID(Card card) {
 		this.card = card;
 		this.channel = card.getBasicChannel();
+	}
 
-		// Select the AID (required for HCE/multiapp)
-		check(channel.transmit(new CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid)));
+	public FakeEstEID getInstance(EstEID esteid) {
+		if (esteid.getType() == CardType.AnyJavaCard) {
+			FakeEstEID fake = new FakeEstEID(esteid.getCard());
+			return fake;
+		}
+		return null;
 	}
 
 
@@ -151,6 +160,7 @@ public class FakeEstEID {
 
 		parser.accepts(OPT_EMULATE, "Use FakeEstEIDApplet intance inside vJCRE");
 		parser.accepts(OPT_TEST, "Run the EstEID test-suite");
+		parser.accepts(OPT_INFO, "Show information about the EstEID token");
 
 		parser.accepts(OPT_PIN1, "PIN1 of the tested card").withRequiredArg();
 		parser.accepts(OPT_PIN2, "PIN2 of the tested card").withRequiredArg();
@@ -247,9 +257,27 @@ public class FakeEstEID {
 
 			EstEID esteid = EstEID.getInstance(term);
 
-			if (args.has(OPT_VERBOSE)) {
+			if (args.has(OPT_VERBOSE) || args.has(OPT_INFO)) {
 				System.out.println("ATR:  " + GPUtils.byteArrayToString(esteid.getCard().getATR().getBytes()));
 				System.out.println("Type: " + esteid.getType());
+			}
+
+			if (args.has(OPT_INFO)) {
+				Map<PIN, Byte> counts = esteid.getPINCounters();
+
+				System.out.print("PIN tries remaining:");
+				for (PIN p: PIN.values()) {
+					System.out.print(" " + p.toString() + ": " + counts.get(p) + ";");
+				}
+				System.out.println();
+
+				String docnr = esteid.getPersonalData(PersonalData.DOCUMENT_NR);
+				System.out.println("Doc#: " + docnr);
+				if (!docnr.startsWith("N")) {
+					System.out.println("Cardholder: " + esteid.getPersonalData(PersonalData.GIVEN_NAMES1) + " " + esteid.getPersonalData(PersonalData.SURNAME));
+				}
+				X509Certificate authcert = esteid.readAuthCert();
+				System.out.println("Certificate subject: " + authcert.getSubjectDN());
 			}
 
 			FakeEstEID fake = null;
@@ -321,6 +349,7 @@ public class FakeEstEID {
 			}
 		} finally {
 			if (card != null) {
+				card.endExclusive();
 				TerminalManager.disconnect(card, true);
 			}
 		}
