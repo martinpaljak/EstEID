@@ -22,6 +22,7 @@
 package esteidhacker;
 
 import java.io.ByteArrayInputStream;
+import java.io.UnsupportedEncodingException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -311,7 +312,12 @@ public final class EstEID {
 			select(FID_EEEE);
 			select(FID_5044);
 		}
-		return new String(read_record(d.getRec())).trim();
+
+		try {
+			return new String(read_record(d.getRec()), "ISO-8859-15").trim();
+		} catch (UnsupportedEncodingException e){
+			throw new RuntimeException(e);
+		}
 	}
 
 	// File handling
@@ -478,6 +484,10 @@ public final class EstEID {
 	}
 
 	public void crypto_tests(String pin1, String pin2) throws NoSuchAlgorithmException, NoSuchPaddingException, EstEIDException, CardException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+		Map<PIN, Byte> pins = getPINCounters();
+		if (pins.get(PIN1) < 3 || pins.get(PIN2) < 3)
+			throw new RuntimeException("Will not run crypto tests on a card with not-known or blocked PINs!");
+
 		X509Certificate authcert = readAuthCert();
 		System.out.println("Auth cert " + authcert.getSubjectX500Principal().getName("RFC1779"));
 
