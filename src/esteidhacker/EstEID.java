@@ -489,7 +489,7 @@ public final class EstEID {
 			throw new RuntimeException("Will not run crypto tests on a card with not-known or blocked PINs!");
 
 		X509Certificate authcert = readAuthCert();
-		System.out.println("Auth cert " + authcert.getSubjectX500Principal().getName("RFC1779"));
+		System.out.println("Auth cert " + authcert.getSubjectDN());
 
 		// Verify keys vs certificates
 		Cipher verify_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
@@ -516,7 +516,7 @@ public final class EstEID {
 
 		// Signature key
 		X509Certificate signcert = readSignCert();
-		System.out.println("Sign cert " + signcert.getSubjectX500Principal().getName("RFC1779"));
+		System.out.println("Sign cert " + signcert.getSubjectDN());
 
 		r.nextBytes(rnd);
 		verify_cipher.init(Cipher.DECRYPT_MODE, signcert.getPublicKey());
@@ -526,5 +526,9 @@ public final class EstEID {
 		} else {
 			System.out.println("ENCRYPT: OK");
 		}
+	}
+
+	public void pin_tests() {
+
 	}
 }

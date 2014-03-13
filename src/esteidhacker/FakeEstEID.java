@@ -262,23 +262,6 @@ public class FakeEstEID {
 				System.out.println("Type: " + esteid.getType());
 			}
 
-			if (args.has(OPT_INFO)) {
-				Map<PIN, Byte> counts = esteid.getPINCounters();
-
-				System.out.print("PIN tries remaining:");
-				for (PIN p: PIN.values()) {
-					System.out.print(" " + p.toString() + ": " + counts.get(p) + ";");
-				}
-				System.out.println();
-
-				String docnr = esteid.getPersonalData(PersonalData.DOCUMENT_NR);
-				System.out.println("Doc#: " + docnr);
-				if (!docnr.startsWith("N")) {
-					System.out.println("Cardholder: " + esteid.getPersonalData(PersonalData.GIVEN_NAMES1) + " " + esteid.getPersonalData(PersonalData.SURNAME));
-				}
-				X509Certificate authcert = esteid.readAuthCert();
-				System.out.println("Certificate subject: " + authcert.getSubjectDN());
-			}
 
 			FakeEstEID fake = null;
 			if (esteid.getType() == CardType.AnyJavaCard) {
@@ -337,6 +320,26 @@ public class FakeEstEID {
 					check(fake.channel.transmit(cmd));
 				}
 			}
+
+			// Following assumes a "ready" card.
+			if (args.has(OPT_INFO)) {
+				Map<PIN, Byte> counts = esteid.getPINCounters();
+
+				System.out.print("PIN tries remaining:");
+				for (PIN p: PIN.values()) {
+					System.out.print(" " + p.toString() + ": " + counts.get(p) + ";");
+				}
+				System.out.println();
+
+				String docnr = esteid.getPersonalData(PersonalData.DOCUMENT_NR);
+				System.out.println("Doc#: " + docnr);
+				if (!docnr.startsWith("N")) {
+					System.out.println("Cardholder: " + esteid.getPersonalData(PersonalData.GIVEN_NAMES1) + " " + esteid.getPersonalData(PersonalData.SURNAME));
+				}
+				X509Certificate authcert = esteid.readAuthCert();
+				System.out.println("Certificate subject: " + authcert.getSubjectDN());
+			}
+
 
 			if (args.has(OPT_TEST)) {
 				esteid.crypto_tests(pin1, pin2);
