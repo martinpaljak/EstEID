@@ -1,6 +1,6 @@
 # EstEID hacker
 
-Java ~~utilities~~ source code for everything and anything related to EstEID:
+Java ~~utilities~~ source code for everything and anything related to [EstEID](http://esteid.org):
 
 * [EstEID.java](src/esteidhacker/EstEID.java) - javax.smartcardio helper for any EstEID-compatible card with a high-level interface for certificates, crypto, PIN codes and personal data file.
 * [FakeEstEID.java](src/esteidhacker/FakeEstEID.java) - utility for working with a [FakeEstEIDApplet](https://github.com/martinpaljak/AppletPlayground/wiki/FakeEstEID) instance. Supports emulation inside [vJCRE](https://github.com/martinpaljak/vJCRE#import-projavacardvre).
@@ -16,11 +16,11 @@ Java ~~utilities~~ source code for everything and anything related to EstEID:
 
 * Create a new FakeEstEID card (requires a [supported JavaCard](https://github.com/martinpaljak/GlobalPlatform/wiki/TestedCards)):
         
-        java -jar esteid.jar -ca fake.ca -new
+        java -jar esteid.jar -install -ca fake.ca -new
 
 * Run EstEID test-suite against a real card (via PC/SC):
 
-        $ java -jar esteid.jar -info -test -pin1 XXXX -pin2 YYYYY 
+        $ java -jar esteid.jar -info -test-crypto -pin1 XXXX -pin2 YYYYY 
         ATR:  3BFE1800008031FE45803180664090A4162A00830F9000EF
         Type: JavaCard2011
         PIN tries remaining: PIN1: 3; PIN2: 3; PUK: 1;
@@ -50,7 +50,7 @@ Java ~~utilities~~ source code for everything and anything related to EstEID:
 
 * Run EstEID test-suite against an emulated card (read: test the FakeEstEIDApplet):
         
-        $ java -jar esteid.jar -emulate -ca fake.ca -new -info -test
+        $ java -jar esteid.jar -emulate -info -test
         ATR:  3B80800101
         Type: AnyJavaCard
         PIN tries remaining: PIN1: 3; PIN2: 3; PUK: 3;
@@ -74,7 +74,6 @@ Java ~~utilities~~ source code for everything and anything related to EstEID:
 
 ## License
 Mixed LGPL/MIT, please check individual files! Other options available upon request.
-
 
 ## Contact
 * martin@martinpaljak.net
