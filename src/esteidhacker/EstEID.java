@@ -23,6 +23,7 @@ package esteidhacker;
 
 import java.io.ByteArrayInputStream;
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -46,8 +47,6 @@ import javax.smartcardio.ResponseAPDU;
 
 import openkms.gp.GPUtils;
 import openkms.gp.TerminalManager;
-
-import org.bouncycastle.crypto.RuntimeCryptoException;
 
 public final class EstEID {
 
@@ -108,13 +107,19 @@ public final class EstEID {
 	}
 	// PIN codes
 	public enum PIN {
-		PIN1(1, 1), PIN2(2, 2), PUK(0, 3);
+		PIN1(1, 1, 3, 12), PIN2(2, 2, 5, 12), PUK(0, 3, 8, 12);
 
 		private final int ref;
 		private final int rec;
-		private PIN(int ref, int rec) {
+		private final int min;
+		private final int max;
+
+
+		private PIN(int ref, int rec, int minlen, int maxlen) {
 			this.ref = ref;
 			this.rec = rec;
+			min = minlen;
+			max = maxlen;
 		}
 		// Reference in VERIFY et al
 		public byte getRef() {
@@ -157,8 +162,6 @@ public final class EstEID {
 	// 2011 warm
 	public final static ATR javacard_2011_warm_atr = new ATR(GPUtils.stringToByteArray("3bfe1800008031fe45803180664090a4162a00830f9000ef"));
 
-
-
 	// Card identification
 	// AID of modern JavaCard app (FakeEstEID et al)
 	public static final byte[] aid = new byte[] {(byte)0xD2, (byte)0x33, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x45, (byte)0x73, (byte)0x74, (byte)0x45, (byte)0x49, (byte)0x44, (byte)0x20, (byte)0x76, (byte)0x33, (byte)0x35};
@@ -179,10 +182,10 @@ public final class EstEID {
 	}
 
 	// Instance fields
-	private Card card;
-	private CardTerminal terminal;
+	private Card card = null;
+	private CardTerminal terminal = null;
 	private CardType type = null;
-
+	protected boolean strict = true;
 	private int currentFID = FID_3F00;
 
 	private EstEID() {}
@@ -205,6 +208,7 @@ public final class EstEID {
 		card = terminal.connect("*");
 		card.beginExclusive();
 		ATR atr = card.getATR();
+		// Check for ATR.
 		if (knownATRs.containsKey(atr)) {
 			// DigiID is a broken card
 			if (atr.equals(micardo_cold_atr)) {
@@ -234,6 +238,7 @@ public final class EstEID {
 			type = CardType.AnyJavaCard;
 			return;
 		}
+		// If we get here this is not our card.
 		card.endExclusive();
 		throw new RuntimeException("Could not identify EstEID card!");
 	}
@@ -250,9 +255,11 @@ public final class EstEID {
 		try {
 			verify(pin, value.getBytes());
 		} catch (EstEIDException e) {
+			// Some cards don't use 63CX but 630X :(
 			if (e.getSW() == 0x6983 || ((e.getSW() & 0x6300) == 0x6300)) {
 				throw new WrongPINException(e.getSW());
 			}
+			throw e;
 		}
 	}
 
@@ -260,19 +267,34 @@ public final class EstEID {
 		try {
 			change(pin, oldpin.getBytes(), newpin.getBytes());
 		} catch (EstEIDException e) {
+			// Some cards don't use 63CX but 630X :(
 			if (e.getSW() == 0x6983 || ((e.getSW() & 0x6300) == 0x6300)) {
 				throw new WrongPINException(e.getSW());
 			}
+			throw e;
 		}
 	}
 
-	public void unblock(PIN pin, String newpin) throws WrongPINException, CardException {
+	public void unblock(PIN pin) throws WrongPINException, CardException {
 		try {
-			unblock(pin, newpin.getBytes());
+			unblock_apdu(pin, null);
 		} catch (EstEIDException e) {
+			// Some cards don't use 63CX but 630X :(
 			if (e.getSW() == 0x6983 || ((e.getSW() & 0x6300) == 0x6300)) {
 				throw new WrongPINException(e.getSW());
 			}
+			throw e;
+		}
+	}
+	public void unblock(PIN pin, String newpin) throws WrongPINException, CardException {
+		try {
+			unblock_apdu(pin, newpin.getBytes());
+		} catch (EstEIDException e) {
+			// Some cards don't use 63CX but 630X :(
+			if (e.getSW() == 0x6983 || ((e.getSW() & 0x6300) == 0x6300)) {
+				throw new WrongPINException(e.getSW());
+			}
+			throw e;
 		}
 	}
 
@@ -284,14 +306,14 @@ public final class EstEID {
 		byte [] v = new byte[oldpin.length + newpin.length];
 		System.arraycopy(oldpin, 0, v, 0, oldpin.length);
 		System.arraycopy(newpin, 0, v, oldpin.length, newpin.length);
-		return check(transmit(new CommandAPDU(0x00, INS_CHANGE_REFERENCE_DATA, pin.getRef(), 0x00, v)));
+		return check(transmit(new CommandAPDU(0x00, INS_CHANGE_REFERENCE_DATA, 0x00, pin.getRef(), v)));
 	}
 
-	public ResponseAPDU unblock(PIN pin, byte[] newpin) throws CardException {
+	public ResponseAPDU unblock_apdu(PIN pin, byte[] newpin) throws CardException {
 		if (newpin == null) {
-			return check(transmit(new CommandAPDU(0x00, INS_RESET_RETRY_COUNTER, 0x00, pin.getRef(), newpin)));
-		} else {
 			return check(transmit(new CommandAPDU(0x00, INS_RESET_RETRY_COUNTER, 0x03, pin.getRef())));
+		} else {
+			return check(transmit(new CommandAPDU(0x00, INS_RESET_RETRY_COUNTER, 0x00, pin.getRef(), newpin)));
 		}
 	}
 
@@ -441,6 +463,7 @@ public final class EstEID {
 				card.endExclusive();
 				TerminalManager.disconnect(card, true);
 			} catch (CardException e) {
+				// Just print for info.
 				e.printStackTrace();
 			}
 		}
@@ -451,20 +474,21 @@ public final class EstEID {
 	}
 
 	private static ResponseAPDU check(ResponseAPDU resp) throws EstEIDException {
-		if (resp.getSW() != 0x9000)
+		if (resp.getSW() != 0x9000) {
 			throw new EstEIDException(resp.getSW());
+		}
 		return resp;
 	}
 
 	@SuppressWarnings("serial")
-	private static class EstEIDException extends RuntimeException {
+	public static class EstEIDException extends RuntimeException {
 		private int sw;
 		public EstEIDException(int sw) {
 			this.sw = sw;
 		}
 
 		public String toString() {
-			return "Card returned: " + Integer.toHexString(sw).toUpperCase();
+			return "Card returned: 0x" + Integer.toHexString(sw).toUpperCase();
 		}
 		public int getSW() {
 			return sw;
@@ -472,35 +496,37 @@ public final class EstEID {
 	}
 
 	@SuppressWarnings("serial")
-	private static class WrongPINException extends RuntimeException {
+	public static class WrongPINException extends RuntimeException {
 		private int sw;
 		public WrongPINException(int sw) {
 			this.sw = sw;
 		}
 
 		public String toString() {
-			return "PIN: " + sw;
+			return "PIN: 0x" + Integer.toHexString(sw).toUpperCase();
 		}
 	}
 
 	public void crypto_tests(String pin1, String pin2) throws NoSuchAlgorithmException, NoSuchPaddingException, EstEIDException, CardException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
 		Map<PIN, Byte> pins = getPINCounters();
-		if (pins.get(PIN1) < 3 || pins.get(PIN2) < 3)
+		if (strict && (pins.get(PIN1) < 3 || pins.get(PIN2) < 3)) {
 			throw new RuntimeException("Will not run crypto tests on a card with not-known or blocked PINs!");
+		}
 
-		X509Certificate authcert = readAuthCert();
-		System.out.println("Auth cert " + authcert.getSubjectDN());
-
-		// Verify keys vs certificates
+		// Verify on-card keys vs certificates
 		Cipher verify_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
 		SecureRandom r = SecureRandom.getInstance("SHA1PRNG");
 		byte [] rnd = new byte[20];
+
+		// Authentication key
+		X509Certificate authcert = readAuthCert();
+		System.out.println("Auth cert " + authcert.getSubjectDN());
 
 		r.nextBytes(rnd);
 		verify_cipher.init(Cipher.DECRYPT_MODE, authcert.getPublicKey());
 		byte[] result = verify_cipher.doFinal(authenticate(rnd, pin1));
 		if (!java.util.Arrays.equals(rnd, result)) {
-			throw new RuntimeCryptoException("Card and auth key don't match!");
+			throw new RuntimeException("Card and auth key don't match!");
 		} else {
 			System.out.println("ENCRYPT: OK");
 		}
@@ -509,7 +535,7 @@ public final class EstEID {
 		verify_cipher.init(Cipher.ENCRYPT_MODE, authcert.getPublicKey());
 		result = verify_cipher.doFinal(rnd);
 		if (!java.util.Arrays.equals(rnd, decrypt(result, pin1))) {
-			throw new RuntimeCryptoException("Card and auth key don't match on decryption!");
+			throw new RuntimeException("Card and auth key don't match on decryption!");
 		} else {
 			System.out.println("DECRYPT: OK");
 		}
@@ -522,13 +548,62 @@ public final class EstEID {
 		verify_cipher.init(Cipher.DECRYPT_MODE, signcert.getPublicKey());
 		result = verify_cipher.doFinal(sign(rnd, pin2));
 		if (!java.util.Arrays.equals(rnd, result)) {
-			throw new RuntimeCryptoException("Card and sign key don't match!");
+			throw new RuntimeException("Card and sign key don't match!");
 		} else {
 			System.out.println("ENCRYPT: OK");
 		}
 	}
 
-	public void pin_tests() {
+	private String make_random_pin(int len) {
+		try {
+			BigInteger b = new BigInteger(len*4, SecureRandom.getInstance("SHA1PRNG"));
+			return "123456789".substring(0, len);
+			//return b.toString().substring(0, len);
+		}
+		catch (NoSuchAlgorithmException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
+	public void pin_tests(String pin1, String pin2, String puk) throws CardException {
+
+		Map<PIN, Byte> pins = getPINCounters();
+		if (strict && (pins.get(PIN1) < 3 || pins.get(PIN2) < 3 || pins.get(PUK) < 3)) {
+			throw new RuntimeException("Will not run pin tests on a card with not-known or blocked PINs!");
+		}
+		String newpin1 = make_random_pin(4);
+		String newpin2 = make_random_pin(5);
+		String newpuk = make_random_pin(8);
+
+		// Verify all PIN-s
+		verify(PIN1, pin1);
+		verify(PIN2, pin2);
+		verify(PUK, puk);
+
+		// Change all pins to new and back
+		change(PIN1, pin1, newpin1);
+		change(PIN1, newpin1, pin1);
+
+		change(PIN2, pin2, newpin2);
+		change(PIN2, newpin2, pin2);
+
+		change(PUK, puk, newpuk);
+		change(PUK, newpuk, puk);
+
+		// Block pin1 and pin2 and unblock with PUK
+		for (PIN p: Arrays.asList(PIN1, PIN2)) {
+			for (int i = 0; i<3; i++) {
+				try {
+					verify(p, make_random_pin(p.min));
+				} catch (WrongPINException e) {
+					System.out.println("Expected exception: " + e.getMessage());
+				}
+			}
+		}
+		// Verify PUK
+		verify(PUK, puk);
+		unblock(PIN1);
+		verify(PUK, puk);
+		unblock(PIN2);
 	}
 }

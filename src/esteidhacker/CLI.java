@@ -41,6 +41,7 @@ import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import openkms.gp.GPUtils;
+import openkms.gp.GlobalPlatform;
 import openkms.gp.LoggingCardTerminal;
 import openkms.gp.TerminalManager;
 
@@ -64,6 +65,7 @@ public class CLI {
 	private static final String OPT_DEBUG = "debug";
 	private static final String OPT_VERBOSE = "verbose";
 	private static final String OPT_INFO = "info";
+	private static final String OPT_RELAX = "relax";
 
 	private static final String OPT_CA = "ca";
 	private static final String OPT_RESIGN = "resign";
@@ -83,7 +85,9 @@ public class CLI {
 	private static final String OPT_DATA = "data";
 
 	private static final String OPT_EMULATE = "emulate";
-	private static final String OPT_TEST = "test";
+	private static final String OPT_TEST_CRYPTO = "test-crypto";
+	private static final String OPT_TEST_PINS = "test-pins";
+
 
 	private static final String OPT_PIN1 = "pin1";
 	private static final String OPT_PIN2 = "pin2";
@@ -102,6 +106,7 @@ public class CLI {
 		parser.acceptsAll(Arrays.asList("h", OPT_HELP), "Show this help");
 		parser.acceptsAll(Arrays.asList("d", OPT_DEBUG), "Debug (show APDU-s)");
 		parser.acceptsAll(Arrays.asList("v", OPT_VERBOSE), "Be verbose");
+		parser.accepts(OPT_RELAX, "Relax some checks");
 
 		// FakeEstEIDCA interface
 		parser.accepts(OPT_CA, "Use or generate a CA").withRequiredArg().ofType(File.class);
@@ -125,15 +130,14 @@ public class CLI {
 		parser.accepts(OPT_DATA, "Edit the personal data file");
 
 		parser.accepts(OPT_EMULATE, "Use FakeEstEIDApplet intance inside vJCRE");
-		parser.accepts(OPT_TEST, "Run the EstEID test-suite");
+		parser.accepts(OPT_TEST_CRYPTO, "Run crypto test-suite");
+		parser.accepts(OPT_TEST_PINS, "Run PIN-s test-suite");
+
 		parser.accepts(OPT_INFO, "Show information about the EstEID token");
 
 		parser.accepts(OPT_PIN1, "PIN1 of the tested card").withRequiredArg();
 		parser.accepts(OPT_PIN2, "PIN2 of the tested card").withRequiredArg();
 		parser.accepts(OPT_PUK, "PUK of the tested card").withRequiredArg();
-
-
-
 
 		// Parse arguments
 		try {
@@ -222,9 +226,21 @@ public class CLI {
 				term = LoggingCardTerminal.getInstance(term);
 
 			if (args.has(OPT_INSTALL)) {
-
+				// Install the applet
+				Card c = term.connect("*");
+				c.beginExclusive();
+				GlobalPlatform gp = new GlobalPlatform(c.getBasicChannel());
+				gp.imFeelingLucky();
+				gp.uninstallDefaultSelected(true);
+				c.endExclusive();
+				TerminalManager.disconnect(c, true);
 			}
+
 			EstEID esteid = EstEID.getInstance(term);
+
+			if (args.has(OPT_RELAX)) {
+				esteid.strict = false;
+			}
 
 			if (args.has(OPT_VERBOSE) || args.has(OPT_INFO)) {
 				System.out.println("ATR:  " + GPUtils.byteArrayToString(esteid.getCard().getATR().getBytes()));
@@ -306,7 +322,15 @@ public class CLI {
 			}
 
 
-			if (args.has(OPT_TEST)) {
+			if (args.has(OPT_TEST_PINS)) {
+				if (args.has(OPT_PIN1) ^ args.has(OPT_PIN2) || args.has(OPT_PIN2) ^ args.has(OPT_PUK)) {
+					System.out.println("Need any or all of PIN options if testing for PINS");
+					System.exit(1);
+				}
+				esteid.pin_tests(pin1, pin2, puk);
+			}
+
+			if (args.has(OPT_TEST_CRYPTO)) {
 				esteid.crypto_tests(pin1, pin2);
 			}
 		} catch (Exception e) {
