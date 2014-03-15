@@ -85,8 +85,9 @@ public class CLI {
 	private static final String OPT_DATA = "data";
 
 	private static final String OPT_EMULATE = "emulate";
-	private static final String OPT_TEST_CRYPTO = "test-crypto";
+	private static final String OPT_TEST = "test";
 	private static final String OPT_TEST_PINS = "test-pins";
+	private static final String OPT_TEST_CRYPTO = "test-crypto";
 
 
 	private static final String OPT_PIN1 = "pin1";
@@ -130,8 +131,9 @@ public class CLI {
 		parser.accepts(OPT_DATA, "Edit the personal data file");
 
 		parser.accepts(OPT_EMULATE, "Use FakeEstEIDApplet intance inside vJCRE");
-		parser.accepts(OPT_TEST_CRYPTO, "Run crypto test-suite");
-		parser.accepts(OPT_TEST_PINS, "Run PIN-s test-suite");
+		parser.accepts(OPT_TEST, "Run EstEID test-suite");
+		parser.accepts(OPT_TEST_CRYPTO, "Run only crypto tests");
+		parser.accepts(OPT_TEST_PINS, "Run only PIN tests");
 
 		parser.accepts(OPT_INFO, "Show information about the EstEID token");
 
@@ -176,6 +178,8 @@ public class CLI {
 			} else {
 				ca.loadFromFile(f);
 			}
+		} else if (args.has(OPT_EMULATE)) {
+			ca.generate();
 		} else if (args.has(OPT_NEW) || args.has(OPT_GENAUTH) || args.has(OPT_GENSIGN) || args.has(OPT_RESIGN)) {
 			throw new IllegalArgumentException("Need a CA!");
 		}
@@ -227,6 +231,7 @@ public class CLI {
 
 			if (args.has(OPT_INSTALL)) {
 				// Install the applet
+				// TODO
 				Card c = term.connect("*");
 				c.beginExclusive();
 				GlobalPlatform gp = new GlobalPlatform(c.getBasicChannel());
@@ -243,10 +248,9 @@ public class CLI {
 			}
 
 			if (args.has(OPT_VERBOSE) || args.has(OPT_INFO)) {
-				System.out.println("ATR:  " + GPUtils.byteArrayToString(esteid.getCard().getATR().getBytes()));
+				System.out.println("ATR: " + GPUtils.byteArrayToString(esteid.getCard().getATR().getBytes()));
 				System.out.println("Type: " + esteid.getType());
 			}
-
 
 			FakeEstEID fake = FakeEstEID.getInstance(esteid);
 
@@ -284,12 +288,11 @@ public class CLI {
 				fake.send_key((RSAPrivateCrtKey) key.getPrivate(), 2);
 			}
 
-			if (args.has(OPT_NEW)) {
+			if (args.has(OPT_NEW) || args.has(OPT_EMULATE)) {
 				fake.make_sample_card(ca, args.has(OPT_CHECK));
 			}
 
-			// make this automagic somehow.
-			// FIXME: this is bad code.
+			// FIXME: this is ugly and bad code.
 			if (args.has(OPT_DATA)) {
 				for (int i = 1; i<= 16; i++) {
 					CommandAPDU cmd = new CommandAPDU(0x80, 0x04, i, 0x00, 256);
@@ -302,7 +305,7 @@ public class CLI {
 				}
 			}
 
-			// Following assumes a "ready" card.
+			// Following assumes a "ready" card (-new).
 			if (args.has(OPT_INFO)) {
 				Map<PIN, Byte> counts = esteid.getPINCounters();
 
@@ -322,7 +325,7 @@ public class CLI {
 			}
 
 
-			if (args.has(OPT_TEST_PINS)) {
+			if (args.has(OPT_TEST_PINS) || args.has(OPT_TEST)) {
 				if (args.has(OPT_PIN1) ^ args.has(OPT_PIN2) || args.has(OPT_PIN2) ^ args.has(OPT_PUK)) {
 					System.out.println("Need any or all of PIN options if testing for PINS");
 					System.exit(1);
@@ -330,7 +333,7 @@ public class CLI {
 				esteid.pin_tests(pin1, pin2, puk);
 			}
 
-			if (args.has(OPT_TEST_CRYPTO)) {
+			if (args.has(OPT_TEST_CRYPTO) || args.has(OPT_TEST)) {
 				esteid.crypto_tests(pin1, pin2);
 			}
 		} catch (Exception e) {
@@ -346,5 +349,4 @@ public class CLI {
 			}
 		}
 	}
-
 }

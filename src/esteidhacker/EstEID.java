@@ -512,7 +512,7 @@ public final class EstEID {
 		if (strict && (pins.get(PIN1) < 3 || pins.get(PIN2) < 3)) {
 			throw new RuntimeException("Will not run crypto tests on a card with not-known or blocked PINs!");
 		}
-
+		System.out.println("Testing certificates and crypto ...");
 		// Verify on-card keys vs certificates
 		Cipher verify_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
 		SecureRandom r = SecureRandom.getInstance("SHA1PRNG");
@@ -520,7 +520,7 @@ public final class EstEID {
 
 		// Authentication key
 		X509Certificate authcert = readAuthCert();
-		System.out.println("Auth cert " + authcert.getSubjectDN());
+		System.out.println("Auth cert: " + authcert.getSubjectDN());
 
 		r.nextBytes(rnd);
 		verify_cipher.init(Cipher.DECRYPT_MODE, authcert.getPublicKey());
@@ -542,7 +542,7 @@ public final class EstEID {
 
 		// Signature key
 		X509Certificate signcert = readSignCert();
-		System.out.println("Sign cert " + signcert.getSubjectDN());
+		System.out.println("Sign cert: " + signcert.getSubjectDN());
 
 		r.nextBytes(rnd);
 		verify_cipher.init(Cipher.DECRYPT_MODE, signcert.getPublicKey());
@@ -556,9 +556,8 @@ public final class EstEID {
 
 	private String make_random_pin(int len) {
 		try {
-			BigInteger b = new BigInteger(len*4, SecureRandom.getInstance("SHA1PRNG"));
-			return "123456789".substring(0, len);
-			//return b.toString().substring(0, len);
+			BigInteger b = new BigInteger(128, SecureRandom.getInstance("SHA1PRNG"));
+			return b.toString().substring(0, len);
 		}
 		catch (NoSuchAlgorithmException e) {
 			throw new RuntimeException(e);
@@ -571,6 +570,7 @@ public final class EstEID {
 		if (strict && (pins.get(PIN1) < 3 || pins.get(PIN2) < 3 || pins.get(PUK) < 3)) {
 			throw new RuntimeException("Will not run pin tests on a card with not-known or blocked PINs!");
 		}
+		System.out.println("Testing PIN codes ...");
 		String newpin1 = make_random_pin(4);
 		String newpin2 = make_random_pin(5);
 		String newpuk = make_random_pin(8);
@@ -579,6 +579,7 @@ public final class EstEID {
 		verify(PIN1, pin1);
 		verify(PIN2, pin2);
 		verify(PUK, puk);
+		System.out.println("VERIFY: OK");
 
 		// Change all pins to new and back
 		change(PIN1, pin1, newpin1);
@@ -589,21 +590,24 @@ public final class EstEID {
 
 		change(PUK, puk, newpuk);
 		change(PUK, newpuk, puk);
+		System.out.println("CHANGE: OK");
 
 		// Block pin1 and pin2 and unblock with PUK
 		for (PIN p: Arrays.asList(PIN1, PIN2)) {
 			for (int i = 0; i<3; i++) {
 				try {
-					verify(p, make_random_pin(p.min));
+					verify(p, make_random_pin(p.max));
 				} catch (WrongPINException e) {
 					System.out.println("Expected exception: " + e.getMessage());
 				}
 			}
 		}
+
 		// Verify PUK
 		verify(PUK, puk);
 		unblock(PIN1);
 		verify(PUK, puk);
 		unblock(PIN2);
+		System.out.println("UNBLOCK: OK");
 	}
 }
