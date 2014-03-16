@@ -107,6 +107,8 @@ public class CLI {
 		parser.acceptsAll(Arrays.asList("h", OPT_HELP), "Show this help");
 		parser.acceptsAll(Arrays.asList("d", OPT_DEBUG), "Debug (show APDU-s)");
 		parser.acceptsAll(Arrays.asList("v", OPT_VERBOSE), "Be verbose");
+		parser.acceptsAll(Arrays.asList("i", OPT_INFO), "Show information about the EstEID token");
+
 		parser.accepts(OPT_RELAX, "Relax some checks");
 
 		// FakeEstEIDCA interface
@@ -135,7 +137,6 @@ public class CLI {
 		parser.accepts(OPT_TEST_CRYPTO, "Run only crypto tests");
 		parser.accepts(OPT_TEST_PINS, "Run only PIN tests");
 
-		parser.accepts(OPT_INFO, "Show information about the EstEID token");
 
 		parser.accepts(OPT_PIN1, "PIN1 of the tested card").withRequiredArg();
 		parser.accepts(OPT_PIN2, "PIN2 of the tested card").withRequiredArg();
