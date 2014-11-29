@@ -76,7 +76,7 @@ public class FakeEstEID {
 
 	public void send_cert(byte[] cert, int num) throws Exception {
 		int chunksize = 240; // was:253
-		card.beginExclusive();
+		//card.beginExclusive();
 		try {
 			byte [] c = org.bouncycastle.util.Arrays.append(cert, (byte)0x80);
 			for (int i = 0; i<= (c.length / chunksize); i++) {
@@ -91,7 +91,7 @@ public class FakeEstEID {
 				check(channel.transmit(cmd));
 			}
 		} finally {
-			card.endExclusive();
+			//card.endExclusive();
 		}
 	}
 
@@ -109,7 +109,7 @@ public class FakeEstEID {
 	}
 
 	public void send_key(RSAPrivateCrtKey key, int num) throws CardException {
-		card.beginExclusive();
+		//card.beginExclusive();
 		try {
 			CommandAPDU cmd = null;
 			cmd = new CommandAPDU(0x80, 0x03, num, 0x01, unsigned(key.getPrimeP()));
@@ -123,7 +123,7 @@ public class FakeEstEID {
 			cmd = new CommandAPDU(0x80, 0x03, num, 0x05, unsigned(key.getCrtCoefficient()));
 			check(channel.transmit(cmd));
 		} finally {
-			card.endExclusive();
+			//card.endExclusive();
 		}
 	}
 

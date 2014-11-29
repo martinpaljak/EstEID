@@ -20,12 +20,14 @@ package esteidhacker;
 import java.io.File;
 import java.io.FileReader;
 import java.io.OutputStreamWriter;
+import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
+import java.security.spec.RSAKeyGenParameterSpec;
 import java.util.Arrays;
 import java.util.Map;
 
@@ -234,11 +236,9 @@ public class CLI {
 				// Install the applet
 				// TODO
 				Card c = term.connect("*");
-				c.beginExclusive();
 				GlobalPlatform gp = new GlobalPlatform(c.getBasicChannel());
 				gp.imFeelingLucky();
 				gp.uninstallDefaultSelected(true);
-				c.endExclusive();
 				TerminalManager.disconnect(c, true);
 			}
 
@@ -277,8 +277,12 @@ public class CLI {
 
 			if (args.has(OPT_GENAUTH)) {
 				KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-				keyGen.initialize(2048);
+				keyGen.initialize(new RSAKeyGenParameterSpec(2048, BigInteger.ONE));
+				PEMWriter wr = new PEMWriter(new OutputStreamWriter(System.out));
+
 				KeyPair key = keyGen.generateKeyPair();
+				wr.writeObject(key.getPublic());
+				wr.close();
 				fake.send_key((RSAPrivateCrtKey) key.getPrivate(), 1);
 			}
 
