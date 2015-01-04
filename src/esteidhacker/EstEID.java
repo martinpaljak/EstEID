@@ -193,7 +193,6 @@ public final class EstEID {
 	public static EstEID getInstance(CardTerminal t) throws CardException {
 		EstEID eid = new EstEID();
 		eid.terminal = t;
-		eid.identify();
 		return eid;
 	}
 
@@ -204,7 +203,7 @@ public final class EstEID {
 		return eid;
 	}
 
-	private void identify() throws CardException {
+	public CardType identify() throws CardException {
 		card = terminal.connect("*");
 		card.beginExclusive();
 		ATR atr = card.getATR();
@@ -217,7 +216,7 @@ public final class EstEID {
 				if (resp.getSW() == 0x9000) {
 					// This also selected MF
 					type = CardType.DigiID;
-					return;
+					return type;
 				}
 				if (resp.getSW() == 0x6A83 || resp.getSW() == 0x6D00) {
 					// Locked up DigiID, reset card
@@ -225,22 +224,22 @@ public final class EstEID {
 					card = terminal.connect("*");
 					card.beginExclusive();
 					type = CardType.DigiID;
-					return;
+					return type;
 				}
 			}
 			type = knownATRs.get(atr);
-			return;
+			return type;
 		}
 
 		// Check for generic modern Applet if ATR is unknown
 		ResponseAPDU resp = transmit(new CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid));
 		if (resp.getSW() == 0x9000) {
 			type = CardType.AnyJavaCard;
-			return;
+			return type;
 		}
 		// If we get here this is not our card.
 		card.endExclusive();
-		throw new RuntimeException("Could not identify EstEID card!");
+		return null;
 	}
 
 	public CardType getType() {

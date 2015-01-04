@@ -36,6 +36,7 @@ import javacard.framework.AID;
 
 import javax.smartcardio.Card;
 import javax.smartcardio.CardTerminal;
+import javax.smartcardio.CardTerminals;
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 import javax.smartcardio.TerminalFactory;
@@ -57,6 +58,7 @@ import pro.javacard.vre.VRE;
 import apdu4j.HexUtils;
 import apdu4j.LoggingCardTerminal;
 import apdu4j.TerminalManager;
+import esteidhacker.EstEID.CardType;
 import esteidhacker.EstEID.PIN;
 import esteidhacker.EstEID.PersonalData;
 
@@ -80,6 +82,7 @@ public class CLI {
 	private static final String OPT_AUTHKEY = "authkey";
 	private static final String OPT_SIGNKEY = "signkey";
 
+	private static final String OPT_LIST = "list";
 	private static final String OPT_INSTALL = "install";
 	private static final String OPT_NEW = "new";
 	private static final String OPT_CHECK = "check";
@@ -107,6 +110,7 @@ public class CLI {
 		parser.acceptsAll(Arrays.asList("d", OPT_DEBUG), "Debug (show APDU-s)");
 		parser.acceptsAll(Arrays.asList("v", OPT_VERBOSE), "Be verbose");
 		parser.acceptsAll(Arrays.asList("i", OPT_INFO), "Show information about the EstEID token");
+		parser.acceptsAll(Arrays.asList("l", OPT_LIST), "List connected tokens");
 
 		parser.accepts(OPT_RELAX, "Relax some checks");
 
@@ -231,8 +235,25 @@ public class CLI {
 				// Establish connection to the applet
 				term = TerminalFactory.getInstance("PC/SC", vre, new VJCREProvider()).terminals().list().get(0);
 			} else {
-				// Connect to a real card
-				term = TerminalManager.getTheReader();
+				if (args.has(OPT_LIST)) {
+					TerminalFactory tf = TerminalManager.getTerminalFactory(true);
+					CardTerminals terms = tf.terminals();
+					for (CardTerminal t: terms.list()) {
+						EstEID eid = EstEID.getInstance(t);
+						String s = "";
+						if (t.isCardPresent()) {
+							s = ": not EstEID";
+							CardType ct = eid.identify();
+							if (ct != null) {
+								s = ": " + ct.toString();
+							}
+						}
+						System.out.println((t.isCardPresent() ? "[*] " : "[ ] ") + t.getName() + s);
+					}
+				} else {
+					// Connect to a real card
+					term = TerminalManager.getTheReader();
+				}
 			}
 
 			if (args.has(OPT_DEBUG))
