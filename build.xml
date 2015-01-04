@@ -5,7 +5,7 @@
   <path id="build.classpath">
     <pathelement location="lib/bcprov-jdk15on-150.jar"/>
     <pathelement location="lib/bcpkix-jdk15on-150.jar"/>
-    <pathelement location="lib/jopt-simple-4.6.jar"/>
+    <pathelement location="lib/jopt-simple-4.8.jar"/>
     <pathelement location="lib/gp.jar"/>
     <pathelement location="lib/vjcre.jar"/>
     <pathelement location="lib/applet-playground.jar"/>

@@ -3,13 +3,12 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="lib" path="lib/jnasmartcardio.jar"/>
 	<classpathentry kind="lib" path="lib/bcprov-jdk15on-150.jar"/>
-	<classpathentry kind="lib" path="lib/jopt-simple-4.6.jar"/>
+	<classpathentry kind="lib" path="lib/jopt-simple-4.8.jar"/>
 	<classpathentry kind="lib" path="lib/bcpkix-jdk15on-150.jar"/>
 	<classpathentry kind="lib" path="lib/gp.jar"/>
 	<classpathentry kind="lib" path="lib/vjcre.jar"/>
+	<classpathentry kind="lib" path="lib/applet-playground.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/JavaCard VRE"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/AppletPlayground"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

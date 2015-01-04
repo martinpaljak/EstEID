@@ -19,6 +19,7 @@ package esteidhacker;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
@@ -42,10 +43,7 @@ import javax.smartcardio.TerminalFactory;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import openkms.gp.GPUtils;
 import openkms.gp.GlobalPlatform;
-import openkms.gp.LoggingCardTerminal;
-import openkms.gp.TerminalManager;
 
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -56,6 +54,9 @@ import org.bouncycastle.openssl.PEMWriter;
 import pro.javacard.applets.FakeEstEIDApplet;
 import pro.javacard.vre.VJCREProvider;
 import pro.javacard.vre.VRE;
+import apdu4j.HexUtils;
+import apdu4j.LoggingCardTerminal;
+import apdu4j.TerminalManager;
 import esteidhacker.EstEID.PIN;
 import esteidhacker.EstEID.PersonalData;
 
@@ -96,11 +97,7 @@ public class CLI {
 	private static final String OPT_PIN2 = "pin2";
 	private static final String OPT_PUK = "puk";
 
-	public static void main(String argv[]) throws Exception {
-		String pin1 = EstEID.PIN1String;
-		String pin2 = EstEID.PIN2String;
-		String puk = EstEID.PUKString;
-
+	private static OptionSet parseArguments(String argv[]) throws IOException {
 		OptionSet args = null;
 		OptionParser parser = new OptionParser();
 
@@ -160,15 +157,24 @@ public class CLI {
 			System.exit(1);
 		}
 
-		// Do the work, based on arguments
-		if (args.has(OPT_VERSION)) {
-			System.out.println("EstEID hacker v0.1");
-		}
-
-		// Do the work, based on arguments
 		if (args.has(OPT_HELP)) {
 			parser.printHelpOn(System.out);
 			System.exit(0);
+		}
+		return args;
+	}
+
+	public static void main(String argv[]) throws Exception {
+
+		String pin1 = EstEID.PIN1String;
+		String pin2 = EstEID.PIN2String;
+		String puk = EstEID.PUKString;
+
+		OptionSet args = parseArguments(argv);
+
+		// Do the work, based on arguments
+		if (args.has(OPT_VERSION)) {
+			System.out.println("EstEID hacker v0.1");
 		}
 
 		// Load or generate a CA
@@ -249,7 +255,7 @@ public class CLI {
 			}
 
 			if (args.has(OPT_VERBOSE) || args.has(OPT_INFO)) {
-				System.out.println("ATR: " + GPUtils.byteArrayToString(esteid.getCard().getATR().getBytes()));
+				System.out.println("ATR: " + HexUtils.encodeHexString(esteid.getCard().getATR().getBytes()));
 				System.out.println("Type: " + esteid.getType());
 			}
 
@@ -299,13 +305,13 @@ public class CLI {
 
 			// FIXME: this is ugly and bad code.
 			if (args.has(OPT_DATA)) {
-				for (int i = 1; i<= 16; i++) {
-					CommandAPDU cmd = new CommandAPDU(0x80, 0x04, i, 0x00, 256);
+				for (PersonalData pd: PersonalData.values()) {
+					CommandAPDU cmd = new CommandAPDU(0x80, 0x04, pd.getRec(), 0x00, 256);
 					ResponseAPDU resp = esteid.getCard().getBasicChannel().transmit(cmd);
 					String value = new String(resp.getData(), Charset.forName("ISO8859-15"));
-					System.out.println("Enter new value for: \n" + value);
+					System.out.println("Enter new value (for " +  pd.name() + "): " + value);
 					String input = System.console().readLine();
-					cmd = new CommandAPDU(0x80, 0x04, i, 0x00, input.getBytes("ISO8859-15"));
+					cmd = new CommandAPDU(0x80, 0x04, pd.getRec(), 0x00, input.getBytes("ISO8859-15"));
 					esteid.getCard().getBasicChannel().transmit(cmd);
 				}
 			}

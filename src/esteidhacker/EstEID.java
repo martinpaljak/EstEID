@@ -45,8 +45,8 @@ import javax.smartcardio.CardTerminal;
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 
-import openkms.gp.GPUtils;
-import openkms.gp.TerminalManager;
+import apdu4j.HexUtils;
+import apdu4j.TerminalManager;
 
 public final class EstEID {
 
@@ -148,19 +148,19 @@ public final class EstEID {
 	public final static int chunksize = 250;
 
 	// original cold
-	public final static ATR micardo_cold_atr = new ATR(GPUtils.stringToByteArray("3bfe9400ff80b1fa451f034573744549442076657220312e3043"));
+	public final static ATR micardo_cold_atr = new ATR(HexUtils.decodeHexString("3bfe9400ff80b1fa451f034573744549442076657220312e3043"));
 	// original warm
-	public final static ATR micardo_warm_atr = new ATR(GPUtils.stringToByteArray("3b6e00ff4573744549442076657220312e30"));
+	public final static ATR micardo_warm_atr = new ATR(HexUtils.decodeHexString("3b6e00ff4573744549442076657220312e30"));
 	// 2006 update cold
-	public final static ATR micardo_2006_cold_atr = new ATR(GPUtils.stringToByteArray("3bde18ffc080b1fe451f034573744549442076657220312e302b"));
+	public final static ATR micardo_2006_cold_atr = new ATR(HexUtils.decodeHexString("3bde18ffc080b1fe451f034573744549442076657220312e302b"));
 	// 2006 update warm
-	public final static ATR micardo_2006_warm_atr = new ATR(GPUtils.stringToByteArray("3b5e11ff4573744549442076657220312e30"));
+	public final static ATR micardo_2006_warm_atr = new ATR(HexUtils.decodeHexString("3b5e11ff4573744549442076657220312e30"));
 	// DigiID cold. Warm is the same original cold above.
-	public final static ATR digiid_cold_atr = new ATR(GPUtils.stringToByteArray("3b6e00004573744549442076657220312e30"));
+	public final static ATR digiid_cold_atr = new ATR(HexUtils.decodeHexString("3b6e00004573744549442076657220312e30"));
 	// 2011 cold
-	public final static ATR javacard_2011_cold_atr = new ATR(GPUtils.stringToByteArray("3bfe1800008031fe454573744549442076657220312e30a8"));
+	public final static ATR javacard_2011_cold_atr = new ATR(HexUtils.decodeHexString("3bfe1800008031fe454573744549442076657220312e30a8"));
 	// 2011 warm
-	public final static ATR javacard_2011_warm_atr = new ATR(GPUtils.stringToByteArray("3bfe1800008031fe45803180664090a4162a00830f9000ef"));
+	public final static ATR javacard_2011_warm_atr = new ATR(HexUtils.decodeHexString("3bfe1800008031fe45803180664090a4162a00830f9000ef"));
 
 	// Card identification
 	// AID of modern JavaCard app (FakeEstEID et al)
@@ -321,7 +321,7 @@ public final class EstEID {
 		select(FID_3F00);
 		select(FID_0016);
 		HashMap<PIN, Byte> m = new HashMap<PIN, Byte>();
-		// Ugly, should parse.
+		// FIXME: Ugly, should parse.
 		for (PIN p: PIN.values()) {
 			m.put(p, read_record(p.getRec())[5]);
 		}
@@ -598,7 +598,7 @@ public final class EstEID {
 				try {
 					verify(p, make_random_pin(p.max));
 				} catch (WrongPINException e) {
-					System.out.println("Expected exception: " + e.getMessage());
+					System.out.println("Expected exception: " + e.toString());
 				}
 			}
 		}
