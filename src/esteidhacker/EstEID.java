@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014 Martin Paljak
+ * Copyright (c) 2014-2015 Martin Paljak
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -249,16 +249,26 @@ public final class EstEID {
 		return card;
 	}
 
+	public static void wrong_pin_check(EstEIDException e) throws WrongPINException {
+		if (e.getSW() == 0x6983) {
+			// Blocked
+			throw new WrongPINException(e.getSW());
+		} else if ((e.getSW() & 0x63C0) == 0x63C0) {
+			// Tries remaining
+			throw new WrongPINException(e.getSW());
+		} else if ((e.getSW() & 0x6300) == 0x6300)  {
+			// Some cards don't use 63CX but 630X :(
+			throw new WrongPINException(e.getSW());
+		} else {
+			throw e;
+		}
+	}
 	// PIN handling
 	public void verify(PIN pin, String value) throws WrongPINException, CardException {
 		try {
 			verify(pin, value.getBytes());
 		} catch (EstEIDException e) {
-			// Some cards don't use 63CX but 630X :(
-			if (e.getSW() == 0x6983 || ((e.getSW() & 0x6300) == 0x6300)) {
-				throw new WrongPINException(e.getSW());
-			}
-			throw e;
+			wrong_pin_check(e);
 		}
 	}
 
@@ -266,11 +276,7 @@ public final class EstEID {
 		try {
 			change(pin, oldpin.getBytes(), newpin.getBytes());
 		} catch (EstEIDException e) {
-			// Some cards don't use 63CX but 630X :(
-			if (e.getSW() == 0x6983 || ((e.getSW() & 0x6300) == 0x6300)) {
-				throw new WrongPINException(e.getSW());
-			}
-			throw e;
+			wrong_pin_check(e);
 		}
 	}
 
@@ -278,22 +284,14 @@ public final class EstEID {
 		try {
 			unblock_apdu(pin, null);
 		} catch (EstEIDException e) {
-			// Some cards don't use 63CX but 630X :(
-			if (e.getSW() == 0x6983 || ((e.getSW() & 0x6300) == 0x6300)) {
-				throw new WrongPINException(e.getSW());
-			}
-			throw e;
+			wrong_pin_check(e);
 		}
 	}
 	public void unblock(PIN pin, String newpin) throws WrongPINException, CardException {
 		try {
 			unblock_apdu(pin, newpin.getBytes());
 		} catch (EstEIDException e) {
-			// Some cards don't use 63CX but 630X :(
-			if (e.getSW() == 0x6983 || ((e.getSW() & 0x6300) == 0x6300)) {
-				throw new WrongPINException(e.getSW());
-			}
-			throw e;
+			wrong_pin_check(e);
 		}
 	}
 
@@ -320,7 +318,7 @@ public final class EstEID {
 		select(FID_3F00);
 		select(FID_0016);
 		HashMap<PIN, Byte> m = new HashMap<PIN, Byte>();
-		// FIXME: Ugly, should parse.
+		// XXX: Ugly, should parse.
 		for (PIN p: PIN.values()) {
 			m.put(p, read_record(p.getRec())[5]);
 		}
@@ -512,6 +510,7 @@ public final class EstEID {
 			throw new RuntimeException("Will not run crypto tests on a card with not-known or blocked PINs!");
 		}
 		System.out.println("Testing certificates and crypto ...");
+
 		// Verify on-card keys vs certificates
 		Cipher verify_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
 		SecureRandom r = SecureRandom.getInstance("SHA1PRNG");
@@ -557,8 +556,7 @@ public final class EstEID {
 		try {
 			BigInteger b = new BigInteger(128, SecureRandom.getInstance("SHA1PRNG"));
 			return b.toString().substring(0, len);
-		}
-		catch (NoSuchAlgorithmException e) {
+		} catch (NoSuchAlgorithmException e) {
 			throw new RuntimeException(e);
 		}
 	}
@@ -602,9 +600,10 @@ public final class EstEID {
 			}
 		}
 
-		// Verify PUK
+		// Verify PUK and unblock PIN2
 		verify(PUK, puk);
 		unblock(PIN1);
+		// Unblock PIN2
 		verify(PUK, puk);
 		unblock(PIN2);
 		System.out.println("UNBLOCK: OK");

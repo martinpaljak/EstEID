@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014 Martin Paljak
+ * Copyright (C) 2014-2015 Martin Paljak
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -50,7 +50,7 @@ import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMParser;
-import org.bouncycastle.openssl.PEMWriter;
+import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 
 import pro.javacard.applets.FakeEstEIDApplet;
 import pro.javacard.vre.VJCREProvider;
@@ -214,7 +214,7 @@ public class CLI {
 			pem.close();
 
 			X509Certificate newcert = ca.cloneUserCertificate((RSAPublicKey) crt.getPublicKey(), crt);
-			PEMWriter wr = new PEMWriter(new OutputStreamWriter(System.out));
+			JcaPEMWriter wr = new JcaPEMWriter(new OutputStreamWriter(System.out));
 			wr.writeObject(newcert);
 			wr.close();
 		}
@@ -261,15 +261,16 @@ public class CLI {
 
 			if (args.has(OPT_INSTALL)) {
 				// Install the applet
-				// TODO
 				Card c = term.connect("*");
 				GlobalPlatform gp = new GlobalPlatform(c.getBasicChannel());
 				gp.imFeelingLucky();
 				gp.uninstallDefaultSelected(true);
+				System.err.println("Use GP utility directly for loading");
 				TerminalManager.disconnect(c, true);
 			}
 
 			EstEID esteid = EstEID.getInstance(term);
+			esteid.identify();
 
 			if (args.has(OPT_RELAX)) {
 				esteid.strict = false;
@@ -304,12 +305,13 @@ public class CLI {
 
 			if (args.has(OPT_GENAUTH)) {
 				KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+				keyGen.initialize(2048);
 				keyGen.initialize(new RSAKeyGenParameterSpec(2048, BigInteger.ONE));
-				PEMWriter wr = new PEMWriter(new OutputStreamWriter(System.out));
+				//JcaPEMWriter wr = new JcaPEMWriter(new OutputStreamWriter(System.out));
 
 				KeyPair key = keyGen.generateKeyPair();
-				wr.writeObject(key.getPublic());
-				wr.close();
+				//	wr.writeObject(key.getPublic());
+				//wr.close();
 				fake.send_key((RSAPrivateCrtKey) key.getPrivate(), 1);
 			}
 

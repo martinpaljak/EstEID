@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014 Martin Paljak
+ * Copyright (C) 2014-2015 Martin Paljak
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -56,12 +56,11 @@ import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMParser;
-import org.bouncycastle.openssl.PEMWriter;
+import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 
-// TODO/FIXME: GeneralizedTime instead of UTCTime
 public class FakeEstEIDCA {
 
 	// KeyStore constants
@@ -74,6 +73,12 @@ public class FakeEstEIDCA {
 
 	private RSAPrivateCrtKey esteidKey;
 	private X509Certificate esteidCert;
+
+	public FakeEstEIDCA() throws NoSuchAlgorithmException {
+		// Add BouncyCastle if not present
+		if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null)
+			Security.insertProviderAt(new BouncyCastleProvider(), 1);
+	}
 
 	public void generate() throws NoSuchAlgorithmException, InvalidKeyException, IllegalStateException, NoSuchProviderException,
 	SignatureException, IOException, ParseException, OperatorCreationException, CertificateException {
@@ -103,7 +108,8 @@ public class FakeEstEIDCA {
 
 		// Load real root certificate
 		X509CertificateHolder real = getRealCert("/resources/sk-root.pem");
-		// Use values
+		// Use values from real certificate
+		// TODO/FIXME: GeneralizedTime instead of UTCTime for root
 		JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(real.getIssuer(), real.getSerialNumber(),
 				real.getNotBefore(), real.getNotAfter(), real.getSubject(), kp.getPublic());
 
@@ -174,8 +180,8 @@ public class FakeEstEIDCA {
 	public X509Certificate generateUserCertificate(RSAPublicKey pubkey, boolean signature, String firstname, String lastname,
 			String idcode, String email) throws InvalidKeyException, ParseException, IOException, IllegalStateException,
 			NoSuchProviderException, NoSuchAlgorithmException, SignatureException, CertificateException, OperatorCreationException {
-		Date startDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse("2014-01-01");
-		Date endDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse("2014-12-31");
+		Date startDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse("2015-01-01");
+		Date endDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse("2015-12-31");
 
 		String template = "C=EE,O=ESTEID,OU=%s,CN=%s\\,%s\\,%s,SURNAME=%s,GIVENNAME=%s,SERIALNUMBER=%s";
 		// Normalize.
@@ -244,12 +250,6 @@ public class FakeEstEIDCA {
 		rootCert = (X509Certificate) keystore.getCertificate(esteid);
 	}
 
-	public FakeEstEIDCA() throws NoSuchAlgorithmException {
-		// Add BouncyCastle if not present
-		if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null)
-			Security.insertProviderAt(new BouncyCastleProvider(), 1);
-	}
-
 	public static void main(String[] argv) throws Exception {
 		FakeEstEIDCA ca = new FakeEstEIDCA();
 		ca.generate();
@@ -263,7 +263,7 @@ public class FakeEstEIDCA {
 		X509Certificate authcert = ca.generateUserCertificate((RSAPublicKey) auth.getPublic(), false, "MARTIN", "PALJAK", "38207162722", "martin@martinpaljak.net");
 		X509Certificate signcert = ca.generateUserCertificate((RSAPublicKey) sign.getPublic(), true, "MARTIN", "PALJAK", "38207162722", "martin@martinpaljak.net");
 
-		PEMWriter wr = new PEMWriter(new OutputStreamWriter(System.out));
+		JcaPEMWriter wr = new JcaPEMWriter(new OutputStreamWriter(System.out));
 		wr.writeObject(authcert);
 		wr.writeObject(signcert);
 		wr.close();

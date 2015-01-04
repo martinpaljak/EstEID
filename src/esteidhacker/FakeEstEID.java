@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014 Martin Paljak
+ * Copyright (C) 2014-2015 Martin Paljak
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -69,10 +69,6 @@ public class FakeEstEID {
 		}
 		return null;
 	}
-
-
-
-
 
 	public void send_cert(byte[] cert, int num) throws Exception {
 		int chunksize = 240; // was:253
