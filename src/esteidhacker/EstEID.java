@@ -350,11 +350,11 @@ public final class EstEID {
 
 		ResponseAPDU resp = null;
 		if (fid == FID_3F00) { // Select master file
-			resp = transmit(new CommandAPDU(0x00, INS_SELECT, 0x00, 0x04));
+			resp = transmit(new CommandAPDU(0x00, INS_SELECT, 0x00, 0x0C));
 		} else if (fid == FID_EEEE) { // Select DF
-			resp = transmit(new CommandAPDU(0x00, INS_SELECT, 0x01, 0x04, fidbytes));
+			resp = transmit(new CommandAPDU(0x00, INS_SELECT, 0x01, 0x0C, fidbytes));
 		} else { // Select EF
-			resp = transmit(new CommandAPDU(0x00, INS_SELECT, 0x02, 0x04, fidbytes));
+			resp = transmit(new CommandAPDU(0x00, INS_SELECT, 0x02, 0x0C, fidbytes));
 		}
 		check(resp);
 		currentFID = fid;
@@ -369,8 +369,8 @@ public final class EstEID {
 			try {
 				check(r);
 			} catch (EstEIDException e) {
-				// DigiID truncates on Le==0x00. Ignore
-				if (e.getSW() == 0x6282 && type != CardType.DigiID) {
+				// "Truncated read". Ignore.
+				if (e.getSW() != 0x6282) {
 					throw e;
 				}
 			}
@@ -387,8 +387,7 @@ public final class EstEID {
 	private X509Certificate readCertificate(int fid) throws EstEIDException, CardException {
 		select(FID_3F00);
 		select(FID_EEEE);
-		byte[] fci = select(fid);
-		System.out.println("Recived: " + HexUtils.encodeHexString(fci));
+		select(fid);
 		try {
 			CertificateFactory cf = CertificateFactory.getInstance("X509");
 			return (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(read_file(0x600)));
