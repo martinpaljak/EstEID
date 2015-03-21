@@ -30,6 +30,7 @@ import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.RSAKeyGenParameterSpec;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 
 import javacard.framework.AID;
@@ -87,7 +88,7 @@ public class CLI {
 	private static final String OPT_NEW = "new";
 	private static final String OPT_CHECK = "check";
 
-
+	private static final String OPT_CLONE = "clone";
 	private static final String OPT_DATA = "data";
 
 	private static final String OPT_EMULATE = "emulate";
@@ -133,6 +134,8 @@ public class CLI {
 		parser.accepts(OPT_NEW, "Populate a new \"Mari-Liis Männik\"");
 		parser.accepts(OPT_CHECK, "Check generated keys for consistency");
 
+		// Clone a card
+		parser.accepts(OPT_CLONE, "Clone the card");
 		parser.accepts(OPT_DATA, "Edit the personal data file");
 
 		parser.accepts(OPT_EMULATE, "Use FakeEstEIDApplet intance inside vJCRE");
@@ -258,6 +261,40 @@ public class CLI {
 
 			if (args.has(OPT_DEBUG))
 				term = LoggingCardTerminal.getInstance(term);
+
+			if (args.has(OPT_CLONE)) {
+				// Connect to card.
+				System.out.println("Enter card you want to clone and press enter.");
+				System.console().readLine();
+
+				EstEID esteid = EstEID.getInstance(term);
+				esteid.identify();
+				// Read certificates
+				X509Certificate authcert = esteid.readAuthCert();
+				X509Certificate signcert = esteid.readSignCert();
+				// Read personal data file
+				HashMap<PersonalData, String> pdf = new HashMap<PersonalData, String>();
+				for (PersonalData pd: PersonalData.values()) {
+					pdf.put(pd, esteid.getPersonalData(pd));
+				}
+
+				esteid.getCard().disconnect(false);
+				System.out.println("Enter card with FakeEstEID and press enter.");
+				System.console().readLine();
+
+				FakeEstEID fake = FakeEstEID.getInstance(EstEID.getInstance(term));
+				fake.send_cert(authcert.getEncoded(), 1);
+				fake.send_cert(signcert.getEncoded(), 2);
+
+				// Store basic data
+				for (PersonalData pd: PersonalData.values()) {
+					CommandAPDU cmd = new CommandAPDU(0x80, 0x04, pd.getRec(), 0x00, pdf.get(pd).getBytes("ISO8859-15"));
+					esteid.getCard().getBasicChannel().transmit(cmd);
+				}
+
+				esteid.getCard().disconnect(true);
+			}
+
 
 			if (args.has(OPT_INSTALL)) {
 				// Install the applet

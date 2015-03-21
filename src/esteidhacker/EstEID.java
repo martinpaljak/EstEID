@@ -343,19 +343,22 @@ public final class EstEID {
 	}
 
 	// File handling
-	public void select(int fid) throws CardException {
+	public byte[] select(int fid) throws CardException {
 		byte [] fidbytes = new byte[2];
 		fidbytes[0] = (byte)(fid >> 8);
 		fidbytes[1] = (byte)(fid);
 
+		ResponseAPDU resp = null;
 		if (fid == FID_3F00) { // Select master file
-			check(transmit(new CommandAPDU(0x00, INS_SELECT, 0x00, 0x0C)));
+			resp = transmit(new CommandAPDU(0x00, INS_SELECT, 0x00, 0x04));
 		} else if (fid == FID_EEEE) { // Select DF
-			check(transmit(new CommandAPDU(0x00, INS_SELECT, 0x01, 0x0C, fidbytes)));
+			resp = transmit(new CommandAPDU(0x00, INS_SELECT, 0x01, 0x04, fidbytes));
 		} else { // Select EF
-			check(transmit(new CommandAPDU(0x00, INS_SELECT, 0x02, 0x0C, fidbytes)));
+			resp = transmit(new CommandAPDU(0x00, INS_SELECT, 0x02, 0x04, fidbytes));
 		}
+		check(resp);
 		currentFID = fid;
+		return resp.getData();
 	}
 
 	public byte[] read_file(final int bytes) throws CardException {
@@ -384,8 +387,8 @@ public final class EstEID {
 	private X509Certificate readCertificate(int fid) throws EstEIDException, CardException {
 		select(FID_3F00);
 		select(FID_EEEE);
-		select(fid);
-
+		byte[] fci = select(fid);
+		System.out.println("Recived: " + HexUtils.encodeHexString(fci));
 		try {
 			CertificateFactory cf = CertificateFactory.getInstance("X509");
 			return (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(read_file(0x600)));
