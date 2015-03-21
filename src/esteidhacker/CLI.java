@@ -281,17 +281,22 @@ public class CLI {
 				esteid.getCard().disconnect(false);
 				System.out.println("Enter card with FakeEstEID and press enter.");
 				System.console().readLine();
-
-				FakeEstEID fake = FakeEstEID.getInstance(EstEID.getInstance(term));
+				// XXX: this identify requirement and accessing fake via esteid is silly
+				esteid = EstEID.getInstance(term);
+				esteid.identify();
+				FakeEstEID fake = FakeEstEID.getInstance(esteid);
 				fake.send_cert(authcert.getEncoded(), 1);
 				fake.send_cert(signcert.getEncoded(), 2);
+
+				// Wipe personal data
+				CommandAPDU wipe = new CommandAPDU(0x80, 0x04, 0x00, 0x01);
+				esteid.getCard().getBasicChannel().transmit(wipe);
 
 				// Store basic data
 				for (PersonalData pd: PersonalData.values()) {
 					CommandAPDU cmd = new CommandAPDU(0x80, 0x04, pd.getRec(), 0x00, pdf.get(pd).getBytes("ISO8859-15"));
 					esteid.getCard().getBasicChannel().transmit(cmd);
 				}
-
 				esteid.getCard().disconnect(true);
 			}
 
