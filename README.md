@@ -64,6 +64,10 @@ Java ~~utilities~~ source code for everything and anything related to [EstEID](h
         ENCRYPT: OK
 
 
+* Clone a card
+
+	$ java -jar esteid.jar -clone
+
 
 ## Dependencies
 * [FakeEstEIDApplet](https://github.com/martinpaljak/AppletPlayground/wiki/FakeEstEID) from [AppletPlayground](https://github.com/martinpaljak/AppletPlayground#applet-playground) (MIT)
