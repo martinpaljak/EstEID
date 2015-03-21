@@ -206,39 +206,42 @@ public final class EstEID {
 	public CardType identify() throws CardException {
 		card = terminal.connect("*");
 		card.beginExclusive();
-		ATR atr = card.getATR();
-		// Check for ATR.
-		if (knownATRs.containsKey(atr)) {
-			// DigiID is a broken card
-			if (atr.equals(micardo_cold_atr)) {
-				// Check if DigiID or Micardo
-				ResponseAPDU resp = transmit(new CommandAPDU(0x00, 0xA4, 0x02, 0x00, new byte[] {0x3F, 0x00}, 256));
-				if (resp.getSW() == 0x9000) {
-					// This also selected MF
-					type = CardType.DigiID;
-					return type;
+		try {
+			ATR atr = card.getATR();
+			// Check for ATR.
+			if (knownATRs.containsKey(atr)) {
+				// DigiID is a broken card
+				if (atr.equals(micardo_cold_atr)) {
+					// Check if DigiID or Micardo
+					ResponseAPDU resp = transmit(new CommandAPDU(0x00, 0xA4, 0x02, 0x00, new byte[] {0x3F, 0x00}, 256));
+					if (resp.getSW() == 0x9000) {
+						// This also selected MF
+						type = CardType.DigiID;
+						return type;
+					}
+					if (resp.getSW() == 0x6A83 || resp.getSW() == 0x6D00) {
+						// Locked up DigiID, reset card
+						TerminalManager.disconnect(card, true);
+						card = terminal.connect("*");
+						card.beginExclusive();
+						type = CardType.DigiID;
+						return type;
+					}
 				}
-				if (resp.getSW() == 0x6A83 || resp.getSW() == 0x6D00) {
-					// Locked up DigiID, reset card
-					TerminalManager.disconnect(card, true);
-					card = terminal.connect("*");
-					card.beginExclusive();
-					type = CardType.DigiID;
-					return type;
-				}
+				type = knownATRs.get(atr);
+				return type;
 			}
-			type = knownATRs.get(atr);
-			return type;
-		}
 
-		// Check for generic modern Applet if ATR is unknown
-		ResponseAPDU resp = transmit(new CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid));
-		if (resp.getSW() == 0x9000) {
-			type = CardType.AnyJavaCard;
-			return type;
+			// Check for generic modern Applet if ATR is unknown
+			ResponseAPDU resp = transmit(new CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid));
+			if (resp.getSW() == 0x9000) {
+				type = CardType.AnyJavaCard;
+				return type;
+			}
+		} finally {
+			card.endExclusive();
 		}
 		// If we get here this is not our card.
-		card.endExclusive();
 		return null;
 	}
 

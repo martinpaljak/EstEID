@@ -378,7 +378,6 @@ public class CLI {
 			}
 		} finally {
 			if (card != null) {
-				card.endExclusive();
 				TerminalManager.disconnect(card, true);
 			}
 		}
