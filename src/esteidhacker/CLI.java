@@ -287,7 +287,9 @@ public class CLI {
 				FakeEstEID fake = FakeEstEID.getInstance(esteid);
 				fake.send_cert(authcert.getEncoded(), 1);
 				fake.send_cert(signcert.getEncoded(), 2);
-
+				// Generate random keys
+				fake.send_new_key(1);
+				fake.send_new_key(2);
 				// Wipe personal data
 				CommandAPDU wipe = new CommandAPDU(0x80, 0x04, 0x00, 0x01);
 				esteid.getCard().getBasicChannel().transmit(wipe);
@@ -346,22 +348,11 @@ public class CLI {
 			}
 
 			if (args.has(OPT_GENAUTH)) {
-				KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-				keyGen.initialize(2048);
-				keyGen.initialize(new RSAKeyGenParameterSpec(2048, BigInteger.ONE));
-				//JcaPEMWriter wr = new JcaPEMWriter(new OutputStreamWriter(System.out));
-
-				KeyPair key = keyGen.generateKeyPair();
-				//	wr.writeObject(key.getPublic());
-				//wr.close();
-				fake.send_key((RSAPrivateCrtKey) key.getPrivate(), 1);
+				fake.send_new_key(1);
 			}
 
 			if (args.has(OPT_GENSIGN)) {
-				KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-				keyGen.initialize(2048);
-				KeyPair key = keyGen.generateKeyPair();
-				fake.send_key((RSAPrivateCrtKey) key.getPrivate(), 2);
+				fake.send_new_key(2);
 			}
 
 			if (args.has(OPT_NEW) || args.has(OPT_EMULATE)) {

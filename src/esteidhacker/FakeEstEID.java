@@ -29,6 +29,7 @@ import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
+import java.security.spec.RSAKeyGenParameterSpec;
 import java.util.Arrays;
 
 import javax.crypto.BadPaddingException;
@@ -44,7 +45,9 @@ import javax.smartcardio.ResponseAPDU;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.crypto.RuntimeCryptoException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.openssl.PEMKeyPair;
 import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 
 import esteidhacker.EstEID.CardType;
 
@@ -97,11 +100,29 @@ public class FakeEstEID {
 		pem.close();
 		send_cert(crt.getEncoded(), num);
 	}
+
+	public void send_new_key(int num) throws Exception {
+		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+		keyGen.initialize(2048);
+		//keyGen.initialize(new RSAKeyGenParameterSpec(2048, BigInteger.ONE));
+		KeyPair key = keyGen.generateKeyPair();
+		send_key((RSAPrivateCrtKey) key.getPrivate(), num);
+	}
+
 	public void send_key_pem(File f, int num) throws Exception {
 		PEMParser pem = new PEMParser(new InputStreamReader(new FileInputStream(f)));
-		RSAPrivateCrtKey key = (RSAPrivateCrtKey) pem.readObject();
+		// OpenSSL genrsa makes a key pair.
+		Object o = pem.readObject();
+		RSAPrivateCrtKey key;
+		if (o instanceof org.bouncycastle.openssl.PEMKeyPair) {
+			PEMKeyPair pair = (PEMKeyPair) o;
+			JcaPEMKeyConverter convert = new JcaPEMKeyConverter();
+			key = (RSAPrivateCrtKey) convert.getPrivateKey(pair.getPrivateKeyInfo());
+		} else {
+			key = (RSAPrivateCrtKey) pem.readObject();
+		}
 		pem.close();
-		send_cert(key.getEncoded(), num);
+		send_key(key, num);
 	}
 
 	public void send_key(RSAPrivateCrtKey key, int num) throws CardException {
