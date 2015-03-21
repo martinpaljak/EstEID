@@ -63,7 +63,7 @@ public class FakeEstEID {
 	}
 
 	public static FakeEstEID getInstance(EstEID esteid) {
-		if (esteid.getType() == CardType.AnyJavaCard) {
+		if (esteid.getType() == CardType.AnyJavaCard || esteid.getType() == CardType.JavaCard2011) {
 			FakeEstEID fake = new FakeEstEID(esteid.getCard());
 			return fake;
 		}
