@@ -66,7 +66,7 @@ Java ~~utilities~~ source code for everything and anything related to [EstEID](h
 
 * Clone a card
 
-	$ java -jar esteid.jar -clone
+        $ java -jar esteid.jar -clone
 
 
 ## Dependencies
