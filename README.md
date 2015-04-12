@@ -2,9 +2,9 @@
 
 Java ~~utilities~~ source code for everything and anything related to [EstEID](http://esteid.org):
 
-* [EstEID.java](src/esteidhacker/EstEID.java) - javax.smartcardio helper for any EstEID-compatible card with a high-level interface for certificates, crypto, PIN codes and personal data file.
+* [EstEID.java](#esteidjava)
 * [FakeEstEID.java](src/esteidhacker/FakeEstEID.java) - utility for working with a [FakeEstEIDApplet](https://github.com/martinpaljak/AppletPlayground/wiki/FakeEstEID) instance. Supports emulation inside [vJCRE](https://github.com/martinpaljak/vJCRE#import-projavacardvre).
-* [FakeEstEIDCA](#fakesteidca) - 
+* [FakeEstEIDCA](#fakeesteidca)
 * [CLI.java](src/esteidhacker/CLI.java) - code of the command line utility that serves as usage documentation.
 
 ## Usage
@@ -91,9 +91,11 @@ Mixed LGPL/MIT, please check individual files! Other options available upon requ
 ## Components
 
 ### EstEID.java
-* high level interface to features of an EstEID card, in Java
-* translates meaningful operations into APDU sequences
-* can talk to any PC/SC terminal or somethig else exposd via javax.smartcardio
+
+Encapsulates all the APDU protocol and exposes high-level and meaningful API for making operations with the card.
+Can talk to any PC/SC terminal or somethig else exposd via `javax.smartcardio`.
+
+Source: [EstEID.java](src/esteidhacker/EstEID.java)
 
 #### Similar projects
 * https://github.com/sleepless/jesteid
