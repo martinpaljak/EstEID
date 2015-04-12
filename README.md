@@ -4,7 +4,7 @@ Java ~~utilities~~ source code for everything and anything related to [EstEID](h
 
 * [EstEID.java](src/esteidhacker/EstEID.java) - javax.smartcardio helper for any EstEID-compatible card with a high-level interface for certificates, crypto, PIN codes and personal data file.
 * [FakeEstEID.java](src/esteidhacker/FakeEstEID.java) - utility for working with a [FakeEstEIDApplet](https://github.com/martinpaljak/AppletPlayground/wiki/FakeEstEID) instance. Supports emulation inside [vJCRE](https://github.com/martinpaljak/vJCRE#import-projavacardvre).
-* [FakeEstEIDCA.java](src/esteidhacker/FakeEstEIDCA.java) - utility for maintaining a [SK](http://www.sk.ee) look-alike CA for [EstEID related certificates](https://www.sk.ee/repositoorium/sk-sertifikaadid/) (root, esteid, user auth/sign). See also: `sk` utility in [python-esteid](https://github.com/martinpaljak/python-esteid)
+* [FakeEstEIDCA](#fakesteidca) - 
 * [CLI.java](src/esteidhacker/CLI.java) - code of the command line utility that serves as usage documentation.
 
 ## Usage
@@ -88,15 +88,32 @@ Mixed LGPL/MIT, please check individual files! Other options available upon requ
 * Wishlist:
   * A GUI maybe, not unlike qesteidutil?
 
-## Similar projects
-EstEID card access through javax.smartcardio
+## Components
 
+### EstEID.java
+* high level interface to features of an EstEID card, in Java
+* translates meaningful operations into APDU sequences
+* can talk to any PC/SC terminal or somethig else exposd via javax.smartcardio
+
+#### Similar projects
 * https://github.com/sleepless/jesteid
   * Very verbose but educating to read. Parses a lot of data.
 * http://blog.codeborne.com/2010/10/javaxsmartcardio-and-esteid.html
   * Simple sample on how to read personal data file.
 * https://eid.eesti.ee/index.php/Sample_applications#Claims_application
   * Complete "ecosystem" sample but not easily re-usable.
+* [esteid.c](https://github.com/martinpaljak/esteid.c)
+
+
+### FakeEstEIDCA
+Utility for maintaining a [SK](http://www.sk.ee) look-alike CA for [EstEID related certificates](https://www.sk.ee/repositoorium/sk-sertifikaadid/) (root, esteid, user auth/sign) based on BouncyCastle.
+
+Source: [FakeEstEIDCA.java](src/esteidhacker/FakeEstEIDCA.java)
+
+#### Similar and related projects
+* [Metasploit SSL imersonation module](http://www.rapid7.com/db/modules/auxiliary/gather/impersonate_ssl) 
+  * Instead of generic impersonator implements a specific profile. Possible to programmatically change the profile.
+* `sk` utility in [python-esteid](https://github.com/martinpaljak/python-esteid)
 
 ----
 All about the [EstEID](http://esteid.org)
