@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014-2015 Martin Paljak
+ * Copyright (C) 2014-2016 Martin Paljak
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -170,8 +170,8 @@ public class FakeEstEIDCA {
 			Extension ext = holder.getExtension(extoid);
 			builder.copyAndAddExtension(ext.getExtnId(), ext.isCritical(), holder);
 		}
-		// Generate cert
-		ContentSigner sigGen = new JcaContentSignerBuilder("SHA1withRSA").setProvider(BouncyCastleProvider.PROVIDER_NAME).build(esteidKey);
+		// Generate cert. NB! SHA256!
+		ContentSigner sigGen = new JcaContentSignerBuilder("SHA256withRSA").setProvider(BouncyCastleProvider.PROVIDER_NAME).build(esteidKey);
 
 		X509CertificateHolder newcert = builder.build(sigGen);
 		return new JcaX509CertificateConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME).getCertificate(newcert);
@@ -180,8 +180,8 @@ public class FakeEstEIDCA {
 	public X509Certificate generateUserCertificate(RSAPublicKey pubkey, boolean signature, String firstname, String lastname,
 			String idcode, String email) throws InvalidKeyException, ParseException, IOException, IllegalStateException,
 			NoSuchProviderException, NoSuchAlgorithmException, SignatureException, CertificateException, OperatorCreationException {
-		Date startDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse("2015-01-01");
-		Date endDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse("2015-12-31");
+		Date startDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse("2016-01-01");
+		Date endDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse("2016-12-31");
 
 		String template = "C=EE,O=ESTEID,OU=%s,CN=%s\\,%s\\,%s,SURNAME=%s,GIVENNAME=%s,SERIALNUMBER=%s";
 		// Normalize.
@@ -224,8 +224,8 @@ public class FakeEstEIDCA {
 			}
 		}
 
-		// Generate cert
-		ContentSigner sigGen = new JcaContentSignerBuilder("SHA1withRSA").setProvider(BouncyCastleProvider.PROVIDER_NAME).build(esteidKey);
+		// Generate cert NB! SHA256
+		ContentSigner sigGen = new JcaContentSignerBuilder("SHA256withRSA").setProvider(BouncyCastleProvider.PROVIDER_NAME).build(esteidKey);
 
 		X509CertificateHolder cert = builder.build(sigGen);
 		return new JcaX509CertificateConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME).getCertificate(cert);
