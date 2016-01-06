@@ -3,8 +3,8 @@
   <description>ANT build file for EstEID hacking</description>
   <!-- Build the software -->
   <path id="build.classpath">
-    <pathelement location="lib/bcprov-jdk15on-151.jar"/>
-    <pathelement location="lib/bcpkix-jdk15on-151.jar"/>
+    <pathelement location="lib/bcprov-jdk15on-153.jar"/>
+    <pathelement location="lib/bcpkix-jdk15on-153.jar"/>
     <pathelement location="lib/jopt-simple-4.8.jar"/>
     <pathelement location="lib/gp.jar"/>
     <pathelement location="lib/vjcre.jar"/>
@@ -12,7 +12,7 @@
   </path>
   <target name="compile" description="compile the source">
     <mkdir dir="build"/>
-    <javac srcdir="src" destdir="build" includeantruntime="false" excludes="**/tests/**" target="1.7" debug="true" debuglevel="lines,vars,source">
+    <javac srcdir="src" destdir="build" includeantruntime="false" excludes="**/tests/**" debug="true" debuglevel="lines,vars,source">
       <compilerarg value="-Xlint"/>
       <classpath refid="build.classpath"/>
     </javac>

@@ -2,9 +2,9 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="lib" path="lib/jnasmartcardio.jar"/>
-	<classpathentry kind="lib" path="lib/bcprov-jdk15on-151.jar"/>
+	<classpathentry kind="lib" path="lib/bcprov-jdk15on-153.jar"/>
 	<classpathentry kind="lib" path="lib/jopt-simple-4.8.jar"/>
-	<classpathentry kind="lib" path="lib/bcpkix-jdk15on-151.jar"/>
+	<classpathentry kind="lib" path="lib/bcpkix-jdk15on-153.jar"/>
 	<classpathentry kind="lib" path="lib/gp.jar"/>
 	<classpathentry kind="lib" path="lib/vjcre.jar"/>
 	<classpathentry kind="lib" path="lib/applet-playground.jar"/>
