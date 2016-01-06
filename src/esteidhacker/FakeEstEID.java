@@ -29,14 +29,12 @@ import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.RSAKeyGenParameterSpec;
 import java.util.Arrays;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import javax.smartcardio.Card;
 import javax.smartcardio.CardChannel;
 import javax.smartcardio.CardException;
 import javax.smartcardio.CommandAPDU;
@@ -57,17 +55,16 @@ public class FakeEstEID {
 	private static final String[] defaultDataFile = new String[] {"JÄNES-KARVANE", "SIILIPOISS", "Jesús MARIA", "G", "LOL", "01.01.0001", "10101010005", "A0000001", "31.12.2099", "TIIBET", "01.01.2014", "ALALINE", "SEE POLE PÄRIS KAART", " ", " ", " "};
 	public static final byte[] aid = new byte[] {(byte)0xD2, (byte)0x33, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x45, (byte)0x73, (byte)0x74, (byte)0x45, (byte)0x49, (byte)0x44, (byte)0x20, (byte)0x76, (byte)0x33, (byte)0x35};
 
-	private final Card card;
+
 	private final CardChannel channel;
 
-	private FakeEstEID(Card card) {
-		this.card = card;
-		this.channel = card.getBasicChannel();
+	private FakeEstEID(CardChannel c) {
+		this.channel = c;
 	}
 
 	public static FakeEstEID getInstance(EstEID esteid) {
 		if (esteid.getType() == CardType.AnyJavaCard || esteid.getType() == CardType.JavaCard2011) {
-			FakeEstEID fake = new FakeEstEID(esteid.getCard());
+			FakeEstEID fake = new FakeEstEID(esteid.channel);
 			return fake;
 		}
 		return null;

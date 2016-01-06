@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014-2015 Martin Paljak
+ * Copyright (C) 2014-2016 Martin Paljak
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,19 +21,12 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.math.BigInteger;
 import java.nio.charset.Charset;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.cert.X509Certificate;
-import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.RSAKeyGenParameterSpec;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-
-import javacard.framework.AID;
 
 import javax.smartcardio.Card;
 import javax.smartcardio.CardTerminal;
@@ -42,26 +35,26 @@ import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 import javax.smartcardio.TerminalFactory;
 
-import joptsimple.OptionException;
-import joptsimple.OptionParser;
-import joptsimple.OptionSet;
-import openkms.gp.GlobalPlatform;
-
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 
-import pro.javacard.applets.FakeEstEIDApplet;
-import pro.javacard.vre.VJCREProvider;
-import pro.javacard.vre.VRE;
 import apdu4j.HexUtils;
 import apdu4j.LoggingCardTerminal;
 import apdu4j.TerminalManager;
 import esteidhacker.EstEID.CardType;
 import esteidhacker.EstEID.PIN;
 import esteidhacker.EstEID.PersonalData;
+import javacard.framework.AID;
+import joptsimple.OptionException;
+import joptsimple.OptionParser;
+import joptsimple.OptionSet;
+import pro.javacard.applets.FakeEstEIDApplet;
+import pro.javacard.gp.GlobalPlatform;
+import pro.javacard.vre.VJCREProvider;
+import pro.javacard.vre.VRE;
 
 
 public class CLI {
@@ -100,6 +93,9 @@ public class CLI {
 	private static final String OPT_PIN1 = "pin1";
 	private static final String OPT_PIN2 = "pin2";
 	private static final String OPT_PUK = "puk";
+
+	private static final String OPT_T0 = "t0";
+	private static final String OPT_T1 = "t1";
 
 	private static OptionSet parseArguments(String argv[]) throws IOException {
 		OptionSet args = null;
@@ -147,6 +143,10 @@ public class CLI {
 		parser.accepts(OPT_PIN1, "PIN1 of the tested card").withRequiredArg();
 		parser.accepts(OPT_PIN2, "PIN2 of the tested card").withRequiredArg();
 		parser.accepts(OPT_PUK, "PUK of the tested card").withRequiredArg();
+
+		parser.accepts(OPT_T0, "Use T=0");
+		parser.accepts(OPT_T1, "Use T=1");
+
 
 		// Parse arguments
 		try {
@@ -239,25 +239,25 @@ public class CLI {
 				term = TerminalFactory.getInstance("PC/SC", vre, new VJCREProvider()).terminals().list().get(0);
 			} else {
 				if (args.has(OPT_LIST)) {
-					TerminalFactory tf = TerminalManager.getTerminalFactory(true);
+					TerminalFactory tf = TerminalManager.getTerminalFactory();
 					CardTerminals terms = tf.terminals();
+					System.out.println("Found terminals: " + terms.list().size());
 					for (CardTerminal t: terms.list()) {
-						EstEID eid = EstEID.getInstance(t);
 						String s = "";
 						if (t.isCardPresent()) {
 							s = ": not EstEID";
-							CardType ct = eid.identify();
+							CardType ct = EstEID.identify(t);
 							if (ct != null) {
 								s = ": " + ct.toString();
 							}
 						}
 						System.out.println((t.isCardPresent() ? "[*] " : "[ ] ") + t.getName() + s);
 					}
-				} else {
-					// Connect to a real card
-					term = TerminalManager.getTheReader();
 				}
 			}
+
+			// Connect to the found reader.
+			term = TerminalManager.getTheReader();
 
 			if (args.has(OPT_DEBUG))
 				term = LoggingCardTerminal.getInstance(term);
@@ -267,8 +267,9 @@ public class CLI {
 				System.out.println("Enter card you want to clone and press enter.");
 				System.console().readLine();
 
-				EstEID esteid = EstEID.getInstance(term);
-				esteid.identify();
+				card = term.connect("*");
+
+				EstEID esteid = EstEID.getInstance(card.getBasicChannel());
 				// Read certificates
 				X509Certificate authcert = esteid.readAuthCert();
 				X509Certificate signcert = esteid.readSignCert();
@@ -278,12 +279,13 @@ public class CLI {
 					pdf.put(pd, esteid.getPersonalData(pd));
 				}
 
-				esteid.getCard().disconnect(false);
+				// Disconnect
+				card.disconnect(true);
 				System.out.println("Enter card with FakeEstEID and press enter.");
 				System.console().readLine();
-				// XXX: this identify requirement and accessing fake via esteid is silly
-				esteid = EstEID.getInstance(term);
-				esteid.identify();
+
+				card = term.connect("*");
+				esteid = EstEID.getInstance(card.getBasicChannel());
 				FakeEstEID fake = FakeEstEID.getInstance(esteid);
 				fake.send_cert(authcert.getEncoded(), 1);
 				fake.send_cert(signcert.getEncoded(), 2);
@@ -292,14 +294,14 @@ public class CLI {
 				fake.send_new_key(2);
 				// Wipe personal data
 				CommandAPDU wipe = new CommandAPDU(0x80, 0x04, 0x00, 0x01);
-				esteid.getCard().getBasicChannel().transmit(wipe);
+				esteid.transmit(wipe);
 
 				// Store basic data
 				for (PersonalData pd: PersonalData.values()) {
 					CommandAPDU cmd = new CommandAPDU(0x80, 0x04, pd.getRec(), 0x00, pdf.get(pd).getBytes("ISO8859-15"));
-					esteid.getCard().getBasicChannel().transmit(cmd);
+					esteid.transmit(cmd);
 				}
-				esteid.getCard().disconnect(true);
+				card.disconnect(true);
 			}
 
 
@@ -310,18 +312,24 @@ public class CLI {
 				gp.imFeelingLucky();
 				gp.uninstallDefaultSelected(true);
 				System.err.println("Use GP utility directly for loading");
-				TerminalManager.disconnect(c, true);
+				c.disconnect(true);
 			}
 
-			EstEID esteid = EstEID.getInstance(term);
-			esteid.identify();
+			String protocol = "*";
+			if (args.has(OPT_T0))
+				protocol = "T=0";
+			else if (args.has(OPT_T1))
+				protocol = "T=1";
+
+			card = term.connect(protocol);
+			EstEID esteid = EstEID.getInstance(card.getBasicChannel());
 
 			if (args.has(OPT_RELAX)) {
 				esteid.strict = false;
 			}
 
 			if (args.has(OPT_VERBOSE) || args.has(OPT_INFO)) {
-				System.out.println("ATR: " + HexUtils.encodeHexString(esteid.getCard().getATR().getBytes()));
+				System.out.println("ATR: " + HexUtils.encodeHexString(card.getATR().getBytes()));
 				System.out.println("Type: " + esteid.getType());
 			}
 
@@ -363,12 +371,12 @@ public class CLI {
 			if (args.has(OPT_DATA)) {
 				for (PersonalData pd: PersonalData.values()) {
 					CommandAPDU cmd = new CommandAPDU(0x80, 0x04, pd.getRec(), 0x00, 256);
-					ResponseAPDU resp = esteid.getCard().getBasicChannel().transmit(cmd);
+					ResponseAPDU resp = esteid.transmit(cmd);
 					String value = new String(resp.getData(), Charset.forName("ISO8859-15"));
 					System.out.println("Enter new value (for " +  pd.name() + "): " + value);
 					String input = System.console().readLine();
 					cmd = new CommandAPDU(0x80, 0x04, pd.getRec(), 0x00, input.getBytes("ISO8859-15"));
-					esteid.getCard().getBasicChannel().transmit(cmd);
+					esteid.transmit(cmd);
 				}
 			}
 
@@ -411,7 +419,7 @@ public class CLI {
 			}
 		} finally {
 			if (card != null) {
-				TerminalManager.disconnect(card, true);
+				card.disconnect(true);
 			}
 		}
 	}

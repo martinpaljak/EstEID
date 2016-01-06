@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015 Martin Paljak
+ * Copyright (c) 2014-2016 Martin Paljak
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,13 +40,13 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.smartcardio.ATR;
 import javax.smartcardio.Card;
+import javax.smartcardio.CardChannel;
 import javax.smartcardio.CardException;
 import javax.smartcardio.CardTerminal;
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 
 import apdu4j.HexUtils;
-import apdu4j.TerminalManager;
 
 public final class EstEID {
 
@@ -136,7 +136,7 @@ public final class EstEID {
 	public static final PIN PIN2 = PIN.PIN2;
 	public static final PIN PUK = PIN.PUK;
 
-	// default test card PIN codes.
+	// default test card PIN codes from envelope "1"
 	public static final String PIN1String = "0090";
 	public static final byte[] testPIN1 = PIN1String.getBytes();
 	public static final String PIN2String = "01497";
@@ -182,29 +182,33 @@ public final class EstEID {
 	}
 
 	// Instance fields
-	private Card card = null;
-	private CardTerminal terminal = null;
+	CardChannel channel = null;
 	private CardType type = null;
 	protected boolean strict = true;
 	private int currentFID = FID_3F00;
 
-	private EstEID() {}
-
-	public static EstEID getInstance(CardTerminal t) throws CardException {
-		EstEID eid = new EstEID();
-		eid.terminal = t;
-		return eid;
+	private EstEID(CardChannel c) {
+		this.channel = c;
 	}
 
-	public static EstEID getInstance(Card c, CardType t) throws CardException {
-		EstEID eid = new EstEID();
-		eid.card = c;
-		eid.type = t;
-		return eid;
+	public static EstEID getInstance(CardChannel c) throws CardException {
+		return new EstEID(c);
 	}
 
-	public CardType identify() throws CardException {
-		card = terminal.connect("*");
+	public boolean start() throws CardException {
+		// FIXME: Try to select AID first
+		ResponseAPDU resp = transmit(new CommandAPDU(0x00, 0xA4, 0x02, 0x00, new byte[] { 0x3F, 0x00 }, 256));
+		if (resp.getSW() == 0x6A83 || resp.getSW() == 0x6D00) {
+			// locked up DigiID MICARDO.
+			return false;
+		} else if (resp.getSW() == 0x9000) {
+			return true;
+		}
+		return false;
+	}
+
+	public static CardType identify(CardTerminal t) throws CardException {
+		Card card = t.connect("*");
 		card.beginExclusive();
 		try {
 			ATR atr = card.getATR();
@@ -213,30 +217,26 @@ public final class EstEID {
 				// DigiID is a broken card
 				if (atr.equals(micardo_cold_atr)) {
 					// Check if DigiID or Micardo
-					ResponseAPDU resp = transmit(new CommandAPDU(0x00, 0xA4, 0x02, 0x00, new byte[] {0x3F, 0x00}, 256));
+					ResponseAPDU resp = card.getBasicChannel().transmit(new CommandAPDU(0x00, 0xA4, 0x02, 0x00, new byte[] {0x3F, 0x00}, 256));
 					if (resp.getSW() == 0x9000) {
 						// This also selected MF
-						type = CardType.DigiID;
-						return type;
+						return CardType.DigiID;
 					}
 					if (resp.getSW() == 0x6A83 || resp.getSW() == 0x6D00) {
 						// Locked up DigiID, reset card
-						TerminalManager.disconnect(card, true);
-						card = terminal.connect("*");
+						card.disconnect(true);
+						card = t.connect("*");
 						card.beginExclusive();
-						type = CardType.DigiID;
-						return type;
+						return CardType.DigiID;
 					}
 				}
-				type = knownATRs.get(atr);
-				return type;
+				return knownATRs.get(atr);
 			}
 
 			// Check for generic modern Applet if ATR is unknown
-			ResponseAPDU resp = transmit(new CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid));
+			ResponseAPDU resp = card.getBasicChannel().transmit(new CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid));
 			if (resp.getSW() == 0x9000) {
-				type = CardType.AnyJavaCard;
-				return type;
+				return CardType.AnyJavaCard;
 			}
 		} finally {
 			card.endExclusive();
@@ -247,9 +247,6 @@ public final class EstEID {
 
 	public CardType getType() {
 		return type;
-	}
-	public Card getCard() {
-		return card;
 	}
 
 	public static void wrong_pin_check(EstEIDException e) throws WrongPINException {
@@ -459,20 +456,8 @@ public final class EstEID {
 		}
 	}
 
-	public void close() {
-		if (card != null) {
-			try {
-				card.endExclusive();
-				TerminalManager.disconnect(card, true);
-			} catch (CardException e) {
-				// Just print for info.
-				e.printStackTrace();
-			}
-		}
-	}
-
-	private ResponseAPDU transmit(CommandAPDU cmd) throws CardException {
-		return card.getBasicChannel().transmit(cmd);
+	ResponseAPDU transmit(CommandAPDU cmd) throws CardException {
+		return channel.transmit(cmd);
 	}
 
 	private static ResponseAPDU check(ResponseAPDU resp) throws EstEIDException {
