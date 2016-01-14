@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014-2015 Martin Paljak
+ * Copyright (C) 2014-2016 Martin Paljak
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -49,7 +49,8 @@ import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 
 import esteidhacker.EstEID.CardType;
 
-public class FakeEstEID {
+// Given a connection to a FakeEstEID applet, provides a higher level interface for the possibilities.
+public class FakeEstEIDManager {
 
 	// Other fun constants
 	private static final String[] defaultDataFile = new String[] {"JÄNES-KARVANE", "SIILIPOISS", "Jesús MARIA", "G", "LOL", "01.01.0001", "10101010005", "A0000001", "31.12.2099", "TIIBET", "01.01.2014", "ALALINE", "SEE POLE PÄRIS KAART", " ", " ", " "};
@@ -58,13 +59,13 @@ public class FakeEstEID {
 
 	private final CardChannel channel;
 
-	private FakeEstEID(CardChannel c) {
+	private FakeEstEIDManager(CardChannel c) {
 		this.channel = c;
 	}
 
-	public static FakeEstEID getInstance(EstEID esteid) {
+	public static FakeEstEIDManager getInstance(EstEID esteid) {
 		if (esteid.getType() == CardType.AnyJavaCard || esteid.getType() == CardType.JavaCard2011) {
-			FakeEstEID fake = new FakeEstEID(esteid.channel);
+			FakeEstEIDManager fake = new FakeEstEIDManager(esteid.channel);
 			return fake;
 		}
 		return null;

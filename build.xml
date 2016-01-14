@@ -1,16 +1,55 @@
 <?xml version="1.0"?>
 <project name="EstEID hacker" default="dist" basedir=".">
   <description>ANT build file for EstEID hacking</description>
+  <target name="fetch" description="fetch the dependencies">
+    <mkdir dir="lib"/>
+    <!-- Remember to update .classpath as well! -->
+    <get src="https://repo1.maven.org/maven2/net/sf/jopt-simple/jopt-simple/4.9/jopt-simple-4.9.jar" dest="lib" verbose="true" skipexisting="true"/>
+    <get src="http://repo2.maven.org/maven2/org/slf4j/slf4j-api/1.7.13/slf4j-api-1.7.13.jar" dest="lib" verbose="true" skipexisting="true"/>
+    <get src="http://repo2.maven.org/maven2/org/slf4j/slf4j-simple/1.7.13/slf4j-simple-1.7.13.jar" dest="lib" verbose="true" skipexisting="true"/>
+    <get src="http://downloads.bouncycastle.org/java/bcprov-jdk15on-154.jar" dest="lib" verbose="true" skipexisting="true"/>
+    <get src="http://downloads.bouncycastle.org/java/bcpkix-jdk15on-154.jar" dest="lib" verbose="true" skipexisting="true"/>
+    <get src="https://github.com/martinpaljak/apdu4j/releases/download/v0.0.15/apdu4j.jar" dest="lib" verbose="true" skipexisting="true"/>
+    <get src="https://github.com/martinpaljak/GlobalPlatformPro/releases/download/v0.3.5/gp.jar" dest="lib" verbose="true" skipexisting="true"/>
+    <get src="https://github.com/martinpaljak/vJCRE/releases/download/r1/vjcre.jar" dest="lib" verbose="true" skipexisting="true"/>
+    <get src="https://github.com/martinpaljak/esteid-applets/releases/download/v0.0.2/FakeEstEID.jar" dest="lib" verbose="true" skipexisting="true"/>
+    
+    <checksum algorithm="SHA-256" file="lib/jopt-simple-4.9.jar" property="26c5856e954b5f864db76f13b86919b59c6eecf9fd930b96baa8884626baf2f5" verifyProperty="joptOK"/>
+    <checksum algorithm="SHA-256" file="lib/slf4j-api-1.7.13.jar" property="20d68d0c2e4fb984ffc164852b8b68df49a2b8716076f576881bcef7649a0e35" verifyProperty="slfjapiOK"/>
+    <checksum algorithm="SHA-256" file="lib/slf4j-simple-1.7.13.jar" property="4709c0b535057c6a9a794da9522b1291de9c72b6d61f41b7ecf63156bc7bee35" verifyProperty="slfjsimpleOK"/>
+    <checksum algorithm="SHA-256" file="lib/bcprov-jdk15on-154.jar" property="d0ae14598f9c528d2ab7bb8ed00e785a5440f692712cd362d69328aba25efb57" verifyProperty="bouncy1OK"/>
+    <checksum algorithm="SHA-256" file="lib/bcpkix-jdk15on-154.jar" property="d618dcfbf0337b91015b21d4b398175ae96382a82c7e1d6e8c657fcd236463c7" verifyProperty="bouncy2OK"/>
+    <checksum algorithm="SHA-256" file="lib/apdu4j.jar" property="d47ccc62324c2fcad1183596d77b2e6478f6136a8bf4c4b631fbc70ec3d659c2" verifyProperty="apduOK"/>
+    <checksum algorithm="SHA-256" file="lib/gp.jar" property="cbe9ba8a198b434aa63c5266f3f30302ab0b174d46fc94a35e46a08ed7a9ef9f" verifyProperty="gpOK"/>
+    <checksum algorithm="SHA-256" file="lib/vjcre.jar" property="20260d4c63d54eba540eb6eee931b9bff9df0ad97823841848126ea36c04e6b4" verifyProperty="vjcreOK"/>
+    <checksum algorithm="SHA-256" file="lib/FakeEstEID.jar" property="c6387f4750c286e3faf566bfac6acd53f46c327ee60f22e796700939c14bf2f5" verifyProperty="appletOK"/>
+    <fail message="Checksum failure">
+      <condition>
+        <or>
+          <isfalse value="${joptOK}"/>
+          <isfalse value="${slfjapiOK}"/>
+          <isfalse value="${slfjsimpleOK}"/>
+          <isfalse value="${bouncy1OK}"/>
+          <isfalse value="${bouncy2OK}"/>
+          <isfalse value="${apduOK}"/>
+          <isfalse value="${gpOK}"/>
+          <isfalse value="${vjcreOK}"/>
+          <isfalse value="${appletOK}"/>
+        </or>
+      </condition>
+    </fail>
+  </target>
   <!-- Build the software -->
   <path id="build.classpath">
-    <pathelement location="lib/bcprov-jdk15on-153.jar"/>
-    <pathelement location="lib/bcpkix-jdk15on-153.jar"/>
-    <pathelement location="lib/jopt-simple-4.8.jar"/>
+    <pathelement location="lib/bcprov-jdk15on-154.jar"/>
+    <pathelement location="lib/bcpkix-jdk15on-154.jar"/>
+    <pathelement location="lib/jopt-simple-4.9.jar"/>
+    <pathelement location="lib/apdu4j.jar"/>    
     <pathelement location="lib/gp.jar"/>
     <pathelement location="lib/vjcre.jar"/>
-    <pathelement location="lib/applet-playground.jar"/>
+    <pathelement location="lib/FakeEstEID.jar"/>
   </path>
-  <target name="compile" description="compile the source">
+  <target name="compile" description="compile the source" depends="fetch">
     <mkdir dir="build"/>
     <javac srcdir="src" destdir="build" includeantruntime="false" excludes="**/tests/**" debug="true" debuglevel="lines,vars,source">
       <compilerarg value="-Xlint"/>
@@ -19,21 +58,18 @@
   </target>
   <!-- Package it into a nice little JAR -->
   <target name="dist" depends="compile" description="generate the distribution">
-    <jar manifest="Manifest.mf" destfile="esteid.jar" level="9" basedir="build">
+    <jar destfile="esteid.jar" level="9" basedir="build">
       <fileset dir="src">
         <include name="resources/*.pem"/>
       </fileset>
     </jar>
   </target>
-  <!-- Wrap the JAR into .EXE for Windows users -->
-  <target name="windist" depends="dist" description="package as .exe">
-    <property name="launch4j.dir" location="ext/launch4j"/>
-    <taskdef name="launch4j" classname="net.sf.launch4j.ant.Launch4jTask" classpath="${launch4j.dir}/launch4j.jar:${launch4j.dir}/lib/xstream.jar"/>
-    <launch4j>
-      <config headerType="console" outfile="esteid.exe" jar="esteid.jar" dontWrapJar="true" errTitle="EstEID hacker">
-        <jre minVersion="1.7.0"/>
-      </config>
-    </launch4j>
+  <target name="cmd" depends="compile" description="generate the local commandline utility">
+    <jar manifest="Manifest.mf" destfile="esteid.jar" level="9" basedir="build">
+      <fileset dir="src">
+        <include name="resources/*.pem"/>
+      </fileset>
+    </jar>
   </target>
   <!-- Clean the source tree -->
   <target name="clean" description="clean up">

@@ -51,7 +51,7 @@ import javacard.framework.AID;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import pro.javacard.applets.FakeEstEIDApplet;
+import org.esteid.applet.FakeEstEID;
 import pro.javacard.gp.GlobalPlatform;
 import pro.javacard.vre.VJCREProvider;
 import pro.javacard.vre.VRE;
@@ -111,7 +111,7 @@ public class CLI {
 
 		parser.accepts(OPT_RELAX, "Relax some checks");
 
-		// FakeEstEIDCA interface
+		// FakeEstEIDManagerCA interface
 		parser.accepts(OPT_CA, "Use or generate a CA").withRequiredArg().ofType(File.class);
 		parser.accepts(OPT_RESIGN, "Re-sign cert (PEM) with CA").withRequiredArg().ofType(File.class);
 
@@ -126,7 +126,7 @@ public class CLI {
 		parser.accepts(OPT_SIGNKEY, "Load sign key (PEM)").withRequiredArg().ofType(File.class);
 
 		// New card generation
-		parser.accepts(OPT_INSTALL, "Install FakeEstEID applet").withOptionalArg();
+		parser.accepts(OPT_INSTALL, "Install FakeEstEIDManager applet").withOptionalArg();
 		parser.accepts(OPT_NEW, "Populate a new \"Mari-Liis Männik\"");
 		parser.accepts(OPT_CHECK, "Check generated keys for consistency");
 
@@ -134,7 +134,7 @@ public class CLI {
 		parser.accepts(OPT_CLONE, "Clone the card");
 		parser.accepts(OPT_DATA, "Edit the personal data file");
 
-		parser.accepts(OPT_EMULATE, "Use FakeEstEIDApplet intance inside vJCRE");
+		parser.accepts(OPT_EMULATE, "Use FakeEstEIDManagerApplet intance inside vJCRE");
 		parser.accepts(OPT_TEST, "Run EstEID test-suite");
 		parser.accepts(OPT_TEST_CRYPTO, "Run only crypto tests");
 		parser.accepts(OPT_TEST_PINS, "Run only PIN tests");
@@ -228,12 +228,11 @@ public class CLI {
 
 		try {
 			if (args.has(OPT_EMULATE)) {
-				// Load FakeEstEIDApplet into vJCRE emulator
+				// Load FakeEstEIDManagerApplet into vJCRE emulator
 				VRE vre = VRE.getInstance();
-				VRE.debugMode = false;
 
-				AID aid = AID.fromBytes(FakeEstEIDApplet.aid);
-				vre.load(FakeEstEIDApplet.class, aid);
+				AID aid = AID.fromBytes(FakeEstEIDManager.aid);
+				vre.load(FakeEstEIDManager.class, aid);
 				vre.install(aid, true);
 				// Establish connection to the applet
 				term = TerminalFactory.getInstance("PC/SC", vre, new VJCREProvider()).terminals().list().get(0);
@@ -281,12 +280,12 @@ public class CLI {
 
 				// Disconnect
 				card.disconnect(true);
-				System.out.println("Enter card with FakeEstEID and press enter.");
+				System.out.println("Enter card with FakeEstEIDManager and press enter.");
 				System.console().readLine();
 
 				card = term.connect("*");
 				esteid = EstEID.getInstance(card.getBasicChannel());
-				FakeEstEID fake = FakeEstEID.getInstance(esteid);
+				FakeEstEIDManager fake = FakeEstEIDManager.getInstance(esteid);
 				fake.send_cert(authcert.getEncoded(), 1);
 				fake.send_cert(signcert.getEncoded(), 2);
 				// Generate random keys
@@ -333,7 +332,7 @@ public class CLI {
 				System.out.println("Type: " + esteid.getType());
 			}
 
-			FakeEstEID fake = FakeEstEID.getInstance(esteid);
+			FakeEstEIDManager fake = FakeEstEIDManager.getInstance(esteid);
 
 			if (args.has(OPT_AUTHCERT)) {
 				File f = (File) args.valueOf(OPT_AUTHCERT);

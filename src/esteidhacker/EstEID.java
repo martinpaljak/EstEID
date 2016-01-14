@@ -260,7 +260,7 @@ public final class EstEID {
 			// Some cards don't use 63CX but 630X :(
 			throw new WrongPINException(e.getSW());
 		} else {
-			throw e;
+			//throw e; // FIXME
 		}
 	}
 	// PIN handling
@@ -339,20 +339,22 @@ public final class EstEID {
 		}
 	}
 
-	// File handling
-	public byte[] select(int fid) throws CardException {
+	public static CommandAPDU select_apdu(int fid) {
 		byte [] fidbytes = new byte[2];
 		fidbytes[0] = (byte)(fid >> 8);
 		fidbytes[1] = (byte)(fid);
 
-		ResponseAPDU resp = null;
 		if (fid == FID_3F00) { // Select master file
-			resp = transmit(new CommandAPDU(0x00, INS_SELECT, 0x00, 0x0C));
+			return new CommandAPDU(0x00, INS_SELECT, 0x00, 0x0C);
 		} else if (fid == FID_EEEE) { // Select DF
-			resp = transmit(new CommandAPDU(0x00, INS_SELECT, 0x01, 0x0C, fidbytes));
+			return new CommandAPDU(0x00, INS_SELECT, 0x01, 0x0C, fidbytes);
 		} else { // Select EF
-			resp = transmit(new CommandAPDU(0x00, INS_SELECT, 0x02, 0x0C, fidbytes));
-		}
+			return new CommandAPDU(0x00, INS_SELECT, 0x02, 0x0C, fidbytes);
+		}	
+	}
+	// File handling
+	public byte[] select(int fid) throws CardException {
+		ResponseAPDU resp = transmit(select_apdu(fid));
 		check(resp);
 		currentFID = fid;
 		return resp.getData();
@@ -376,8 +378,11 @@ public final class EstEID {
 		return bb;
 	}
 
+	public static CommandAPDU read_record_apdu(byte recno) {
+		return new CommandAPDU(0x00, INS_READ_RECORD, recno, 0x04, 256);
+	}
 	public byte[] read_record(final byte recno) throws CardException {
-		ResponseAPDU r = transmit(new CommandAPDU(0x00, INS_READ_RECORD, recno, 0x04, 256));
+		ResponseAPDU r = transmit(read_record_apdu(recno));
 		return check(r).getData();
 	}
 
@@ -468,25 +473,23 @@ public final class EstEID {
 	}
 
 	@SuppressWarnings("serial")
-	public static class EstEIDException extends RuntimeException {
+	public static class EstEIDException extends CardException {
 		private int sw;
 		public EstEIDException(int sw) {
+			super("Card returned: 0x" + Integer.toHexString(sw).toUpperCase());
 			this.sw = sw;
 		}
 
-		public String toString() {
-			return "Card returned: 0x" + Integer.toHexString(sw).toUpperCase();
-		}
 		public int getSW() {
 			return sw;
 		}
 	}
 
 	@SuppressWarnings("serial")
-	public static class WrongPINException extends RuntimeException {
+	public static class WrongPINException extends EstEIDException {
 		private int sw;
 		public WrongPINException(int sw) {
-			this.sw = sw;
+			super(sw);
 		}
 
 		public String toString() {
