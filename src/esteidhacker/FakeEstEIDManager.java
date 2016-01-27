@@ -47,8 +47,6 @@ import org.bouncycastle.openssl.PEMKeyPair;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 
-import esteidhacker.EstEID.CardType;
-
 // Given a connection to a FakeEstEID applet, provides a higher level interface for the possibilities.
 public class FakeEstEIDManager {
 
@@ -59,16 +57,13 @@ public class FakeEstEIDManager {
 
 	private final CardChannel channel;
 
-	private FakeEstEIDManager(CardChannel c) {
-		this.channel = c;
+	FakeEstEIDManager(CardChannel c) {
+		channel = c;
 	}
 
 	public static FakeEstEIDManager getInstance(EstEID esteid) {
-		if (esteid.getType() == CardType.AnyJavaCard || esteid.getType() == CardType.JavaCard2011) {
-			FakeEstEIDManager fake = new FakeEstEIDManager(esteid.channel);
-			return fake;
-		}
-		return null;
+		FakeEstEIDManager fake = new FakeEstEIDManager(esteid.getChannel());
+		return fake;
 	}
 
 	public void send_cert(byte[] cert, int num) throws Exception {
