@@ -2,6 +2,7 @@ sudo: false
 language: java
 jdk:
 - oraclejdk8
+- openjdk7
 script: ant
 env:
   global:
@@ -22,6 +23,7 @@ deploy:
   skip_cleanup: true
   on:
     tags: true
+    jdk: oraclejdk8
   api-key:
     secure: nyJNh410mWIAGdLXRQA6/TFByEjRdxk4i3sXIDBTYD3jcmgEp2BYTSi3gSMaOoNgGl2KH4VgvnT48eJrvZssF39PT4h/36SCmtOfhdWVExwJDbVSY22o24brp7VjbkN2/wAl1qF/yRKEdWF3Xkc3abzpSx27aoRS8nDEvKB5v1M=
 
