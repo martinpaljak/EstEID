@@ -48,6 +48,7 @@ import apdu4j.HexUtils;
 // Instance of this class keeps state and throws EstEIDException if the response from card is not what it is supposed to be.
 // Static methods can be used in a stateless manner.
 // Methods throw CardException if card communication fails.
+// This class requires some love.
 public final class EstEID {
 
 	// Commands
@@ -192,7 +193,6 @@ public final class EstEID {
 	// Instance fields
 	private CardChannel channel = null;
 	private CardType type = null;
-	protected boolean strict = true;
 	private int currentFID = FID_3F00;
 
 	private EstEID(CardChannel c) {
@@ -524,9 +524,9 @@ public final class EstEID {
 	}
 
 	public void crypto_tests(String pin1, String pin2) throws WrongPINException, CardException {
-		Map<PIN, Byte> pins = getPINCounters();
-		if (strict && (pins.get(PIN1) < 3 || pins.get(PIN2) < 3)) {
-			throw new RuntimeException("Will not run crypto tests on a card with not-known or blocked PINs!");
+		Map<PIN, Byte> retries = getPINCounters();
+		if (retries.get(PIN1) < 3 || retries.get(PIN2) < 3) {
+			throw new IllegalStateException("Will not run crypto tests on a card with not-known or blocked PINs!");
 		}
 		System.out.println("Testing certificates and crypto ...");
 
@@ -583,15 +583,15 @@ public final class EstEID {
 		try {
 			return hex2numbers(new BigInteger(len*8, SecureRandom.getInstanceStrong()).toString(16)).substring(0, len);
 		} catch (NoSuchAlgorithmException e) {
-			throw new RuntimeException(e);
+			throw new RuntimeException("Bad environment", e);
 		}
 	}
 
 	public void pin_tests(String pin1, String pin2, String puk) throws CardException, WrongPINException {
 
-		Map<PIN, Byte> pins = getPINCounters();
-		if (strict && (pins.get(PIN1) < 3 || pins.get(PIN2) < 3 || pins.get(PUK) < 3)) {
-			throw new RuntimeException("Will not run pin tests on a card with not-known or blocked PINs!");
+		Map<PIN, Byte> retries = getPINCounters();
+		if (retries.get(PIN1) < 3 || retries.get(PIN2) < 3 || retries.get(PUK) < 3) {
+			throw new IllegalStateException("Will not run pin tests on a card with not-known or blocked PINs!");
 		}
 		System.out.println("Testing PIN codes ...");
 		String newpin1 = make_random_pin(4);

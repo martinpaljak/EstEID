@@ -54,7 +54,6 @@ import org.esteid.EstEID;
 import org.esteid.EstEID.CardType;
 import org.esteid.EstEID.PIN;
 import org.esteid.EstEID.PersonalData;
-import org.esteid.applet.FakeEstEID;
 
 import pro.javacard.gp.GlobalPlatform;
 import pro.javacard.vre.VJCREProvider;
@@ -68,7 +67,6 @@ public class CLI {
 	private static final String OPT_DEBUG = "debug";
 	private static final String OPT_VERBOSE = "verbose";
 	private static final String OPT_INFO = "info";
-	private static final String OPT_RELAX = "relax";
 
 	private static final String OPT_CA = "ca";
 	private static final String OPT_RESIGN = "resign";
@@ -112,8 +110,6 @@ public class CLI {
 		parser.acceptsAll(Arrays.asList("v", OPT_VERBOSE), "Be verbose");
 		parser.acceptsAll(Arrays.asList("i", OPT_INFO), "Show information about the EstEID token");
 		parser.acceptsAll(Arrays.asList("l", OPT_LIST), "List connected tokens");
-
-		parser.accepts(OPT_RELAX, "Relax some checks");
 
 		// FakeEstEIDManagerCA interface
 		parser.accepts(OPT_CA, "Use or generate a CA").withRequiredArg().ofType(File.class);
