@@ -15,7 +15,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-package esteidhacker;
+package org.esteid.hacker;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -46,6 +46,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMKeyPair;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+import org.esteid.EstEID;
 
 // Given a connection to a FakeEstEID applet, provides a higher level interface for the possibilities.
 public class FakeEstEIDManager {

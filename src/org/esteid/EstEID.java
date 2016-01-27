@@ -19,7 +19,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package esteidhacker;
+package org.esteid;
 
 import java.io.ByteArrayInputStream;
 import java.io.UnsupportedEncodingException;

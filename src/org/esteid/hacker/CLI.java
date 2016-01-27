@@ -15,7 +15,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-package esteidhacker;
+package org.esteid.hacker;
 
 import java.io.File;
 import java.io.FileReader;
@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import javax.smartcardio.Card;
+import javax.smartcardio.CardException;
 import javax.smartcardio.CardTerminal;
 import javax.smartcardio.CardTerminals;
 import javax.smartcardio.CommandAPDU;
@@ -44,14 +45,17 @@ import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 import apdu4j.HexUtils;
 import apdu4j.LoggingCardTerminal;
 import apdu4j.TerminalManager;
-import esteidhacker.EstEID.CardType;
-import esteidhacker.EstEID.PIN;
-import esteidhacker.EstEID.PersonalData;
 import javacard.framework.AID;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+
+import org.esteid.EstEID;
+import org.esteid.EstEID.CardType;
+import org.esteid.EstEID.PIN;
+import org.esteid.EstEID.PersonalData;
 import org.esteid.applet.FakeEstEID;
+
 import pro.javacard.gp.GlobalPlatform;
 import pro.javacard.vre.VJCREProvider;
 import pro.javacard.vre.VRE;
@@ -323,12 +327,8 @@ public class CLI {
 			card = term.connect(protocol);
 			EstEID esteid = EstEID.getInstance(card.getBasicChannel());
 
-			if (args.has(OPT_RELAX)) {
-				esteid.strict = false;
-			}
-
 			if (args.has(OPT_VERBOSE) || args.has(OPT_INFO)) {
-				System.out.println("ATR: " + HexUtils.encodeHexString(card.getATR().getBytes()));
+				System.out.println("ATR: " + HexUtils.bin2hex(card.getATR().getBytes()));
 				System.out.println("Type: " + esteid.getType());
 			}
 
@@ -410,11 +410,11 @@ public class CLI {
 			if (args.has(OPT_TEST_CRYPTO) || args.has(OPT_TEST)) {
 				esteid.crypto_tests(pin1, pin2);
 			}
-		} catch (Exception e) {
+		} catch (CardException e) {
 			if (TerminalManager.getExceptionMessage(e) != null) {
 				System.out.println("PC/SC Error: " + TerminalManager.getExceptionMessage(e));
 			} else {
-				throw e;
+				System.out.println("Error: " + e.getMessage());
 			}
 		} finally {
 			if (card != null) {
