@@ -41,6 +41,7 @@
   </target>
   <!-- Build the software -->
   <path id="build.classpath">
+    <pathelement location="lib/slf4j-api-1.7.13.jar"/>
     <pathelement location="lib/bcprov-jdk15on-154.jar"/>
     <pathelement location="lib/bcpkix-jdk15on-154.jar"/>
     <pathelement location="lib/jopt-simple-4.9.jar"/>
