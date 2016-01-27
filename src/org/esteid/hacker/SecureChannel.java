@@ -21,6 +21,7 @@
  */
 package org.esteid.hacker;
 
+import java.security.GeneralSecurityException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -52,7 +53,7 @@ public final class SecureChannel {
 	private static IvParameterSpec nulliv = new IvParameterSpec(new byte[8]);
 
 	// the session keys, in a handy package
-	private class SessionState {
+	public class SessionState {
 		boolean authenticated = false;
 		public byte[] SK1, SK2, SSC; // FIXME: too broad access 
 		@Override
@@ -77,7 +78,7 @@ public final class SecureChannel {
 		this.channel = channel;
 	}
 
-	public SecureChannel getInstance(CardChannel c) {
+	public static SecureChannel getInstance(CardChannel c) {
 		return new SecureChannel(c);
 	}
 
@@ -250,7 +251,7 @@ public final class SecureChannel {
 		} catch (NoSuchAlgorithmException | NoSuchProviderException | NoSuchPaddingException e) {
 			// Must be configured properly
 			throw new RuntimeException("BC not correctly configured?", e);
-		} catch (InvalidKeyException | InvalidAlgorithmParameterException |IllegalBlockSizeException | BadPaddingException e) {
+		} catch (GeneralSecurityException e) {
 			// Generic crypto exception, must be logged
 			throw new SecureChannelException("Failed to wrap APDU", e);
 		} 
@@ -318,7 +319,7 @@ public final class SecureChannel {
 		} catch (NoSuchAlgorithmException | NoSuchProviderException | NoSuchPaddingException e) {
 			// Must be configured properly
 			throw new RuntimeException("BC not correctly configured?", e);
-		} catch (InvalidKeyException | InvalidAlgorithmParameterException |IllegalBlockSizeException | BadPaddingException e) {
+		} catch (GeneralSecurityException e) {
 			// Generic crypto exception, must be logged
 			throw new SecureChannelException("Failed to unwrap APDU", e);
 		} 

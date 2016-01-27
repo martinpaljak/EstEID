@@ -206,14 +206,11 @@ public final class EstEID {
 	public static EstEID start(CardChannel c) throws CardException {
 		// FIXME: Try to select AID first
 		ResponseAPDU resp = c.transmit(select_apdu(FID_3F00));
-		if (resp.getSW() == 0x9000) {
-			return getInstance(c);
-		} else if (resp.getSW() == 0x6A83 || resp.getSW() == 0x6D00) {
-			// locked up DigiID MICARDO.
-			throw new EstEIDException("Locked up Digi-ID detected, must reset card before use");
-		} else {
-			throw new EstEIDException(resp.getSW());
+		if (resp.getSW() == 0x6A83 || resp.getSW() == 0x6D00) {
+			EstEIDException.check(resp, "Locked up Digi-ID detected, must reset card before use");
 		}
+		EstEIDException.check(resp);
+		return getInstance(c);
 	}
 
 	public static CardType identify(CardTerminal t) throws CardException {
@@ -467,24 +464,20 @@ public final class EstEID {
 		return channel.transmit(cmd);
 	}
 	public ResponseAPDU check(CommandAPDU cmd) throws CardException {
-		return check(transmit(cmd));
+		return EstEIDException.check(transmit(cmd));
 	}
-	public static ResponseAPDU check(ResponseAPDU resp) throws EstEIDException {
-		if (resp.getSW() != 0x9000) {
-			throw new EstEIDException(resp.getSW());
-		}
-		return resp;
+	private static ResponseAPDU check(ResponseAPDU r) throws EstEIDException {
+		return EstEIDException.check(r);
 	}
 
 	// Exceptions
 	@SuppressWarnings("serial")
 	public static class EstEIDException extends CardException {
 		private int sw;
-		public EstEIDException(int sw) {
-			super("Card returned: 0x" + Integer.toHexString(sw).toUpperCase());
+		private EstEIDException(int sw, String message) {
+			super(message + ": 0x" + Integer.toHexString(sw).toUpperCase());
 			this.sw = sw;
 		}
-
 		public EstEIDException(String msg) {
 			super(msg);
 			this.sw = 0x0000;
@@ -493,9 +486,17 @@ public final class EstEID {
 			super(msg, reason);
 			this.sw = 0x0000;
 		}
-
 		public int getSW() {
 			return sw;
+		}
+		public static ResponseAPDU check(ResponseAPDU r) throws EstEIDException {
+			return check(r, "Unexpected response");
+		}
+		public static ResponseAPDU check(ResponseAPDU r, String message) throws EstEIDException {
+			if (r.getSW() != 0x9000) {
+				throw new EstEIDException(r.getSW(), message);
+			}
+			return r;
 		}
 	}
 
