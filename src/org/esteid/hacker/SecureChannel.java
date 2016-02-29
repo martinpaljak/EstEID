@@ -28,6 +28,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -52,10 +54,12 @@ public final class SecureChannel {
 
 	private static IvParameterSpec nulliv = new IvParameterSpec(new byte[8]);
 
-	// the session keys, in a handy package
+	// the session keys and other properties, in a handy package
 	public class SessionState {
 		boolean authenticated = false;
-		public byte[] SK1, SK2, SSC; // FIXME: too broad access 
+		public byte[] SK1, SK2, SSC; // FIXME: too broad access
+		Set<String> macs = new HashSet<>(); // MAC-s used within the session.
+
 		@Override
 		public String toString() { return "SK1: " + HexUtils.bin2hex(SK1) + "\nSK2: " + HexUtils.bin2hex(SK2) + "\nSSC: " + HexUtils.bin2hex(SSC);}
 	}
@@ -70,7 +74,7 @@ public final class SecureChannel {
 		public SecureChannelException(String message) {
 			super(message);
 		}
-	} 
+	}
 
 	private CardChannel channel;
 	private SessionState state;
@@ -85,10 +89,9 @@ public final class SecureChannel {
 	public void mutualAuthenticate(byte[] cmk, int cmkNumber) throws CardException, SecureChannelException  {
 		try {
 			SessionState state = new SessionState();
-			SecureRandom rnd = SecureRandom.getInstance("SHA1PRNG");
+			SecureRandom rnd = SecureRandom.getInstanceStrong();
 			logger.trace("MUTUAL AUTHENTICATE with CMK #{}", cmkNumber);
 			logger.trace("CMK: {}", HexUtils.bin2hex(cmk));
-
 
 			// Get RND.IFD from card with GET CHALLENGE
 			ResponseAPDU response = channel.transmit(new CommandAPDU(HexUtils.hex2bin("0084000000")));
@@ -102,13 +105,14 @@ public final class SecureChannel {
 			// K.IFD
 			byte[] KIFD = new byte[0x20];
 			rnd.nextBytes(KIFD);
+			logger.trace("K.IFD: {}", HexUtils.bin2hex(KIFD));
 
 			// RND.IFD
 			byte[] RNDIFD = new byte[0x08];
 			rnd.nextBytes(RNDIFD);
 			logger.trace("RND.IFD: {}", HexUtils.bin2hex(RNDIFD));
 
-			// Construct the APDU block.
+			// Construct the APDU payload
 			byte[] payload = new byte[0x30];
 			System.arraycopy(RNDIFD, 0, payload, 0, RNDIFD.length);
 			System.arraycopy(RNDICC, 0, payload, RNDIFD.length, RNDICC.length);
@@ -131,29 +135,36 @@ public final class SecureChannel {
 				throw new SecureChannelException("MUTUAL AUTHENTICATE: " + Integer.toHexString(response.getSW()));
 			}
 
-
 			// Decrypt response
 			cipher.init(Cipher.DECRYPT_MODE, keyspec, nulliv);
 			byte[] keys = cipher.doFinal(response.getData());
 			logger.trace("Encrypted: {}", HexUtils.bin2hex(response.getData()));
 			logger.trace("Decrypted: {}", HexUtils.bin2hex(keys));
 
-			// Check random
+			// Check nonces
+			// RND.ICC
+			byte RNDICCCHECK[] = new byte[8];
+			System.arraycopy(keys, 0, RNDICCCHECK, 0, 8);
+			if (!Arrays.equals(RNDICC, RNDICCCHECK)) {
+				logger.error("RNDICC did not match! {} vs {}", HexUtils.bin2hex(RNDICC), HexUtils.bin2hex(RNDICCCHECK));
+				throw new SecureChannelException("RNDICC does not match");
+			}
+
+			// RND.IFD
 			byte RNDIFDCHECK[] = new byte[8];
 			System.arraycopy(keys, 8, RNDIFDCHECK, 0, 8);
-			// "secret" is random, so timing is no important.
 			if (!Arrays.equals(RNDIFD, RNDIFDCHECK)) {
-				logger.warn("RNDIFD did not match! {} vs {}", HexUtils.bin2hex(RNDIFD), HexUtils.bin2hex(RNDIFDCHECK));
-				throw new SecureChannelException("RNDIFD do not match");
+				logger.error("RNDIFD did not match! {} vs {}", HexUtils.bin2hex(RNDIFD), HexUtils.bin2hex(RNDIFDCHECK));
+				throw new SecureChannelException("RNDIFD does not match");
 			}
 
 			// XOR session key block.
 			byte[] KICC = Arrays.copyOfRange(keys, 0x10, 0x30);
 			logger.trace("K.ICC: {}", HexUtils.bin2hex(KICC));
 			logger.trace("K.IFD: {}", HexUtils.bin2hex(KIFD));
-			byte[] KXOR = Arrays.copyOf(KICC, KICC.length);
 
 			// Derive Session keys with K.IFD XOR K.ICC
+			byte[] KXOR = Arrays.copyOf(KICC, KICC.length);
 			for (int i = 0; i < 0x20; i++) {
 				KXOR[i] ^= KIFD[i];
 			}
@@ -162,7 +173,6 @@ public final class SecureChannel {
 			// Now set SK1, SK2 and SSC
 			state.SK1 = Arrays.copyOfRange(KXOR, 0x00, 0x10);
 			state.SK2 = Arrays.copyOfRange(KXOR, 0x10, 0x20);
-
 			state.SSC = new byte[8];
 			System.arraycopy(keys, 12, state.SSC, 0, 4);
 			System.arraycopy(keys, 4, state.SSC, 4, 4);
@@ -178,9 +188,8 @@ public final class SecureChannel {
 		} catch (InvalidKeyException | InvalidAlgorithmParameterException |IllegalBlockSizeException | BadPaddingException e) {
 			// Generic crypto exception, must be logged
 			throw new SecureChannelException("Failed mutual authentication", e);
-		} 
+		}
 	}
-
 
 
 	private static CommandAPDU wrap(SessionState state, CommandAPDU apdu) throws SecureChannelException {
@@ -254,7 +263,7 @@ public final class SecureChannel {
 		} catch (GeneralSecurityException e) {
 			// Generic crypto exception, must be logged
 			throw new SecureChannelException("Failed to wrap APDU", e);
-		} 
+		}
 	}
 
 	private static ResponseAPDU unwrap(SessionState state, ResponseAPDU apdu) throws SecureChannelException {
@@ -271,7 +280,14 @@ public final class SecureChannel {
 
 			// Card MAC is last 8 bytes FIXME: check header 8e 80
 			byte [] cardMac = Arrays.copyOfRange(cardData, cardData.length - 8, cardData.length);
-			logger.trace("Card MAC: " + HexUtils.bin2hex(cardMac));
+			String cardMacString = HexUtils.bin2hex(cardMac);
+			logger.trace("Card MAC: " + cardMacString);
+
+			// Make sure that MAC is not re-used
+			if (state.macs.contains(cardMacString)) {
+				throw new SecureChannelException("MAC has been used before: " + cardMacString);
+			}
+			state.macs.add(cardMacString);
 
 			// Calculate MAC over all data except card MAC itself
 			byte [] macData = Arrays.copyOf(cardData, cardData.length - 10);
@@ -322,7 +338,7 @@ public final class SecureChannel {
 		} catch (GeneralSecurityException e) {
 			// Generic crypto exception, must be logged
 			throw new SecureChannelException("Failed to unwrap APDU", e);
-		} 
+		}
 	}
 
 	// Takes care of tracking the state (increasing SSC)
@@ -332,7 +348,7 @@ public final class SecureChannel {
 		CommandAPDU wrapped = wrap(state, command);
 		ResponseAPDU response_wrapped = channel.transmit(wrapped);
 		return unwrap(state, response_wrapped);
-	} 
+	}
 
 	public CardChannel getChannel() {
 		return this.channel;
