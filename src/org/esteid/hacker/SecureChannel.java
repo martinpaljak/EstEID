@@ -89,7 +89,7 @@ public final class SecureChannel {
 	public void mutualAuthenticate(byte[] cmk, int cmkNumber) throws CardException, SecureChannelException  {
 		try {
 			SessionState state = new SessionState();
-			SecureRandom rnd = SecureRandom.getInstanceStrong();
+			SecureRandom rnd = SecureRandom.getInstance("SHA1PRNG");
 			logger.trace("MUTUAL AUTHENTICATE with CMK #{}", cmkNumber);
 			logger.trace("CMK: {}", HexUtils.bin2hex(cmk));
 
