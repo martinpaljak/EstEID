@@ -135,13 +135,15 @@ public final class SecureChannel {
 				throw new SecureChannelException("MUTUAL AUTHENTICATE: " + Integer.toHexString(response.getSW()));
 			}
 
-			// Avoid reflection of K.IFD
-			byte[] hostcgram = Arrays.copyOfRange(authAPDU.getData(), 0x10, 0x30);
-			byte[] cardcgram = Arrays.copyOfRange(response.getData(), 0x10, 0x30);
-
-			if (Arrays.equals(hostcgram, cardcgram)) {
-				throw new SecureChannelException("Bad response from card!");
+			// Avoid reflection
+			for (int i = 0; i < authAPDU.getData().length / 8; i++) {
+				byte[] a = Arrays.copyOfRange(authAPDU.getData(), i * 8, i * 8 + 8);
+				byte[] b = Arrays.copyOfRange(response.getData(), i * 8, i * 8 + 8);
+				if (Arrays.equals(a, b)) {
+					throw new SecureChannelException("Bad response from card!");
+				}
 			}
+
 			// Decrypt response
 			cipher.init(Cipher.DECRYPT_MODE, keyspec, nulliv);
 			byte[] keys = cipher.doFinal(response.getData());
