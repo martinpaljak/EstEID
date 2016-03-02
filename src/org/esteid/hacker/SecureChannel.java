@@ -140,7 +140,8 @@ public final class SecureChannel {
 				byte[] a = Arrays.copyOfRange(authAPDU.getData(), i * 8, i * 8 + 8);
 				byte[] b = Arrays.copyOfRange(response.getData(), i * 8, i * 8 + 8);
 				if (Arrays.equals(a, b)) {
-					throw new SecureChannelException("Bad response from card!");
+					logger.error("Reflection from card: {}", HexUtils.bin2hex(a));
+					throw new SecureChannelException("Reflection from card!");
 				}
 			}
 
@@ -205,6 +206,7 @@ public final class SecureChannel {
 		try {
 			// Increase SSC
 			buffer_increment(state.SSC);
+			logger.trace("Wrapping with {}", state.toString());
 
 			// Make sure that the input CLA is correct
 			int cla = apdu.getCLA() | 0x0C;
@@ -279,8 +281,8 @@ public final class SecureChannel {
 		try {
 			// Increment SSC
 			buffer_increment(state.SSC);
+			logger.trace("Unwrapping with {}", state.toString());
 
-			logger.trace("{}", state.toString());
 			// Verify Mac
 			Mac signer = Mac.getInstance("ISO9797ALG3WITHISO7816-4PADDING", "BC");
 			signer.init(new SecretKeySpec(state.SK2, "DESede"), new IvParameterSpec(state.SSC));
@@ -306,8 +308,9 @@ public final class SecureChannel {
 			logger.trace("Response MAC: " + HexUtils.bin2hex(mac));
 
 			// Verify MAC
-			if (!Arrays.equals(cardMac, mac))
+			if (!Arrays.equals(cardMac, mac)) {
 				throw new SecureChannelException("MAC mismatch! " + HexUtils.bin2hex(cardMac) + " vs " + HexUtils.bin2hex(mac));
+			}
 
 			if (cardData[0] == (byte)0x87) {
 				// Decrypt
@@ -335,12 +338,12 @@ public final class SecureChannel {
 			if (cardData[0] == (byte)0x99)  { // SW only
 				byte[] rapdu = new byte[2];
 				// Extract the verified SW
-				rapdu[0] = cardData[0x02];
-				rapdu[1] = cardData[0x03];
+				rapdu[0] = cardData[2];
+				rapdu[1] = cardData[3];
 				logger.trace("ResponseAPDU: " + HexUtils.bin2hex(rapdu));
 				return new ResponseAPDU(rapdu);
 			}
-			return null;
+			throw new SecureChannelException("Invalid payload");
 		} catch (NoSuchAlgorithmException | NoSuchProviderException | NoSuchPaddingException e) {
 			// Must be configured properly
 			throw new RuntimeException("BC not correctly configured?", e);
@@ -352,8 +355,9 @@ public final class SecureChannel {
 
 	// Takes care of tracking the state (increasing SSC)
 	public ResponseAPDU transmit(CommandAPDU command) throws CardException, SecureChannelException {
-		if (!state.authenticated)
-			throw new IllegalStateException("No mutual authentication");
+		if (!state.authenticated) {
+			throw new IllegalStateException("Channel not authenticated");
+		}
 		CommandAPDU wrapped = wrap(state, command);
 		ResponseAPDU response_wrapped = channel.transmit(wrapped);
 		return unwrap(state, response_wrapped);
