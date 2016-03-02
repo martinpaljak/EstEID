@@ -21,7 +21,11 @@
  */
 package org.esteid;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.security.GeneralSecurityException;
@@ -343,7 +347,7 @@ public final class EstEID {
 			return new CommandAPDU(0x00, INS_SELECT, 0x01, 0x0C, fidbytes);
 		} else { // Select EF
 			return new CommandAPDU(0x00, INS_SELECT, 0x02, 0x0C, fidbytes);
-		}	
+		}
 	}
 	// File handling. Returns FCI, if any
 	public byte[] select(int fid) throws CardException {
@@ -383,7 +387,7 @@ public final class EstEID {
 		select(FID_EEEE);
 		select(fid);
 		return read_file(0x600);
-	} 
+	}
 	private X509Certificate readCertificate(int fid) throws CardException {
 		try {
 			CertificateFactory cf = CertificateFactory.getInstance("X509");
@@ -519,6 +523,7 @@ public final class EstEID {
 		public byte getRemaining() {
 			return remaining;
 		}
+		@Override
 		public String toString() {
 			return "Wrong PIN: " + remaining + " tries remaining" + status;
 		}
@@ -634,5 +639,19 @@ public final class EstEID {
 		verify(PUK, puk);
 		unblock(PIN2);
 		System.out.println("UNBLOCK: OK");
+	}
+
+	public static String getVersion() {
+		String version = "unknown-development";
+		try (InputStream versionfile = EstEID.class.getResourceAsStream("version.txt")) {
+			if (versionfile != null) {
+				try (BufferedReader vinfo = new BufferedReader(new InputStreamReader(versionfile))) {
+					version = vinfo.readLine();
+				}
+			}
+		} catch (IOException e) {
+			version = "unknown-error";
+		}
+		return version;
 	}
 }

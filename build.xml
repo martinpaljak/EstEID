@@ -59,6 +59,7 @@
   </target>
   <!-- Package it into a nice little JAR -->
   <target name="dist" depends="compile" description="generate the distribution">
+    <exec command="git describe --always --tags" output="build/org/esteid/version.txt"/>
     <jar destfile="esteid.jar" level="9" basedir="build">
       <fileset dir="src">
         <include name="resources/*.pem"/>
