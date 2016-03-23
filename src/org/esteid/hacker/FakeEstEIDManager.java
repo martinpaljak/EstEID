@@ -69,23 +69,20 @@ public class FakeEstEIDManager {
 
 	public void send_cert(byte[] cert, int num) throws Exception {
 		int chunksize = 240; // was:253
-		//card.beginExclusive();
-		try {
-			byte [] c = org.bouncycastle.util.Arrays.append(cert, (byte)0x80);
-			for (int i = 0; i<= (c.length / chunksize); i++) {
-				byte []d = new byte[2+chunksize];
-				int off = i*chunksize;
 
-				d[0] = (byte) ((off & 0xFF00) >>> 8);
-				d[1] = (byte) (off & 0xFF);
-				byte[] chunk = Arrays.copyOfRange(c, i*chunksize, i*chunksize+chunksize);
-				System.arraycopy(chunk, 0, d, 2, chunk.length);
-				CommandAPDU cmd = new CommandAPDU(0x80, 0x02, num, 0x00, d);
-				check(channel.transmit(cmd));
-			}
-		} finally {
-			//card.endExclusive();
+		byte [] c = org.bouncycastle.util.Arrays.append(cert, (byte)0x80);
+		for (int i = 0; i<= (c.length / chunksize); i++) {
+			byte []d = new byte[2+chunksize];
+			int off = i*chunksize;
+
+			d[0] = (byte) ((off & 0xFF00) >>> 8);
+			d[1] = (byte) (off & 0xFF);
+			byte[] chunk = Arrays.copyOfRange(c, i*chunksize, i*chunksize+chunksize);
+			System.arraycopy(chunk, 0, d, 2, chunk.length);
+			CommandAPDU cmd = new CommandAPDU(0x80, 0x02, num, 0x00, d);
+			check(channel.transmit(cmd));
 		}
+
 	}
 
 	public void send_cert_pem(File f, int num) throws Exception {

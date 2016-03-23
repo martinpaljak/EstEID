@@ -21,11 +21,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -56,6 +58,7 @@ import org.esteid.EstEID.CardType;
 import org.esteid.EstEID.PIN;
 import org.esteid.EstEID.PersonalData;
 
+import pro.javacard.gp.GlobalPlatform;
 import pro.javacard.vre.VJCREProvider;
 import pro.javacard.vre.VRE;
 
@@ -82,6 +85,8 @@ public class CLI {
 	private static final String OPT_PERSO = "perso";
 	private static final String OPT_NEW = "new";
 	private static final String OPT_CHECK = "check";
+	private static final String OPT_INSTALL = "install";
+	private static final String OPT_FINALIZE = "finalize";
 
 	private static final String OPT_CLONE = "clone";
 	private static final String OPT_DATA = "data";
@@ -132,10 +137,13 @@ public class CLI {
 		parser.accepts(OPT_PERSO, "Personalize a card").withRequiredArg().ofType(File.class);
 		parser.accepts(OPT_NEW, "Populate a new \"Mari-Liis Männik\"");
 		parser.accepts(OPT_CHECK, "Check generated keys for consistency");
+		parser.accepts(OPT_INSTALL, "Install applet");
+		parser.accepts(OPT_FINALIZE, "Finalize personalization");
+
 
 		// Clone a card
 		parser.accepts(OPT_CLONE, "Clone the card");
-		parser.accepts(OPT_DATA, "Edit the personal data file");
+		parser.accepts(OPT_DATA, "Edit or write the personal data file");
 
 		parser.accepts(OPT_EMULATE, "Use FakeEstEIDManagerApplet intance inside vJCRE");
 		parser.accepts(OPT_TEST, "Run EstEID test-suite");
@@ -188,7 +196,7 @@ public class CLI {
 
 		// Do the work, based on arguments
 		if (args.has(OPT_VERSION)) {
-			System.out.println("EstEID hacker v0.1");
+			System.out.println("EstEID hacker " + EstEID.getVersion());
 		}
 
 		if (args.has(OPT_DEBUG)) {
@@ -214,7 +222,7 @@ public class CLI {
 			}
 		} else if (args.has(OPT_EMULATE)) {
 			ca.generate();
-		} else if (args.has(OPT_NEW) || args.has(OPT_GENAUTH) || args.has(OPT_GENSIGN) || args.has(OPT_RESIGN)) {
+		} else if (args.has(OPT_NEW) || args.has(OPT_RESIGN)) {
 			throw new IllegalArgumentException("Need a CA!");
 		}
 
@@ -242,7 +250,7 @@ public class CLI {
 
 
 		Card card = null;
-		CardTerminal term = null;
+		CardTerminal term;
 
 		try {
 			if (args.has(OPT_EMULATE)) {
@@ -271,13 +279,13 @@ public class CLI {
 						System.out.println((t.isCardPresent() ? "[*] " : "[ ] ") + t.getName() + s);
 					}
 				}
+				// Connect to the found reader.
+				term = TerminalManager.getTheReader();
 			}
 
-			// Connect to the found reader.
-			term = TerminalManager.getTheReader();
-
-			if (args.has(OPT_DEBUG))
+			if (args.has(OPT_DEBUG)) {
 				term = LoggingCardTerminal.getInstance(term);
+			}
 
 			if (args.has(OPT_CLONE)) {
 				// Connect to card.
@@ -331,88 +339,155 @@ public class CLI {
 			EstEID esteid = EstEID.getInstance(card.getBasicChannel());
 
 			if (args.has(OPT_PERSO)) {
-				EstEIDManager.doit(card.getBasicChannel(), ca, new FileInputStream((File)args.valueOf(OPT_PERSO)));
-			}
+				// Personalization
+				EstEIDManager mgr = EstEIDManager.getPersoManager(new FileInputStream((File)args.valueOf(OPT_PERSO)), card.getBasicChannel());
+				if (args.has(OPT_NEW)) {
+					// install applet
+					GlobalPlatform gp = mgr.openGlobalPlatform();
+					mgr.installApplet(gp);
+					// Generate keys.
+					SecureChannel sc = SecureChannel.getInstance(gp.getChannel());
+					sc.mutualAuthenticate(mgr.getCMK(0), 0);
 
-			if (args.has(OPT_CMK) && args.has(OPT_KEY)) {
+					RSAPublicKey k1 = EstEIDManager.generateKey(sc, 0);
+					RSAPublicKey k2 = EstEIDManager.generateKey(sc, 1);
+
+					// Generate fake certificates
+					X509Certificate c1 = ca.generateUserCertificate(k1, false, "MARI-LIIS", "MÄNNIK", "47101010033", "mariliis.mannik@eesti.ee");
+					X509Certificate c2 = ca.generateUserCertificate(k2, true, "MARI-LIIS", "MÄNNIK", "47101010033", "mariliis.mannik@eesti.ee");
+
+					// Load certificates
+					EstEIDManager.loadCertificate(sc, c1, 0);
+					EstEIDManager.loadCertificate(sc, c2, 1);
+
+					// Set to personalized
+					EstEIDManager.set_personalized(sc);
+				} else if (args.has(OPT_INSTALL)) {
+					// Only intall the application
+					GlobalPlatform gp = mgr.openGlobalPlatform();
+					mgr.installApplet(gp);// install applet
+				} else {
+					// Everything else assumes installed application with CMK 0
+					SecureChannel sc = SecureChannel.getInstance(card.getBasicChannel());
+					sc.mutualAuthenticate(mgr.getCMK(0), 0);
+
+					if (args.has(OPT_DATA)) {
+						// Write personal data file
+						mgr.writePersoFile(sc);
+					} else if (args.has(OPT_FINALIZE)) {
+						EstEIDManager.set_personalized(sc);
+					} else if (args.has(OPT_GENAUTH)) {
+						RSAPublicKey pubkey = EstEIDManager.generateKey(sc, 0);
+						System.out.println(pub2pem(pubkey));
+					} else if (args.has(OPT_GENSIGN)) {
+						RSAPublicKey pubkey = EstEIDManager.generateKey(sc, 1);
+						System.out.println(pub2pem(pubkey));
+					} else if (args.has(OPT_AUTHCERT)) {
+						PEMParser pem = new PEMParser(new InputStreamReader(new FileInputStream((File)args.valueOf(OPT_AUTHCERT))));
+						X509CertificateHolder crt = (X509CertificateHolder) pem.readObject();
+						pem.close();
+						EstEIDManager.loadCertificate(sc, crt.getEncoded(), 0);
+					} else if (args.has(OPT_SIGNCERT)) {
+						PEMParser pem = new PEMParser(new InputStreamReader(new FileInputStream((File)args.valueOf(OPT_SIGNCERT))));
+						X509CertificateHolder crt = (X509CertificateHolder) pem.readObject();
+						pem.close();
+						EstEIDManager.loadCertificate(sc, crt.getEncoded(), 1);
+					}
+				}
+			} else if (args.has(OPT_CMK) && args.has(OPT_KEY)) {
+				// Post-perso. Requires PIN, so use it if presented.
+				if (args.has(OPT_PIN1)) {
+					card.getBasicChannel().transmit(EstEID.verify_apdu(EstEID.PIN1, (String)args.valueOf(OPT_PIN1)));
+				}
 				SecureChannel sc = SecureChannel.getInstance(card.getBasicChannel());
 				sc.mutualAuthenticate(HexUtils.hex2bin((String)args.valueOf(OPT_KEY)), (Integer)args.valueOf(OPT_CMK));
 				if (args.has(OPT_COUNTERS)) {
 					System.out.println(HexUtils.bin2hex(sc.transmit(new CommandAPDU(HexUtils.hex2bin("00CA040000"))).getBytes()));
+				} else if (args.has(OPT_GENAUTH)) {
+					RSAPublicKey pubkey = EstEIDManager.generateKey(sc, 0);
+					System.out.println(pub2pem(pubkey));
+				} else 	if (args.has(OPT_GENSIGN)) {
+					RSAPublicKey pubkey = EstEIDManager.generateKey(sc, 1);
+					System.out.println(pub2pem(pubkey));
+				} else if (args.has(OPT_AUTHCERT)) {
+					PEMParser pem = new PEMParser(new InputStreamReader(new FileInputStream((File)args.valueOf(OPT_AUTHCERT))));
+					X509CertificateHolder crt = (X509CertificateHolder) pem.readObject();
+					pem.close();
+					EstEIDManager.loadCertificate(sc, crt.getEncoded(), 0);
+				} else if (args.has(OPT_SIGNCERT)) {
+					PEMParser pem = new PEMParser(new InputStreamReader(new FileInputStream((File)args.valueOf(OPT_SIGNCERT))));
+					X509CertificateHolder crt = (X509CertificateHolder) pem.readObject();
+					pem.close();
+					EstEIDManager.loadCertificate(sc, crt.getEncoded(), 1);
+				}
+			} else {
+				// Fake
+				FakeEstEIDManager fake = FakeEstEIDManager.getInstance(esteid);
+
+				if (args.has(OPT_AUTHCERT)) {
+					File f = (File) args.valueOf(OPT_AUTHCERT);
+					fake.send_cert_pem(f, 1);
+				}
+
+				if (args.has(OPT_SIGNCERT)) {
+					File f = (File) args.valueOf(OPT_SIGNCERT);
+					fake.send_cert_pem(f, 2);
+				}
+
+				if (args.has(OPT_AUTHKEY)) {
+					File f = (File) args.valueOf(OPT_AUTHKEY);
+					fake.send_key_pem(f, 1);
+				}
+
+				if (args.has(OPT_SIGNKEY)) {
+					File f = (File) args.valueOf(OPT_SIGNKEY);
+					fake.send_key_pem(f, 2);
+				}
+
+				if (args.has(OPT_GENAUTH)) {
+					fake.send_new_key(1);
+				}
+
+				if (args.has(OPT_GENSIGN)) {
+					fake.send_new_key(2);
+				}
+
+				if (args.has(OPT_NEW) || args.has(OPT_EMULATE)) {
+					fake.make_sample_card(ca, args.has(OPT_CHECK));
+				}
+
+				// FIXME: this is ugly and bad code.
+				if (args.has(OPT_DATA)) {
+					for (PersonalData pd: PersonalData.values()) {
+						CommandAPDU cmd = new CommandAPDU(0x80, 0x04, pd.getRec(), 0x00, 256);
+						ResponseAPDU resp = esteid.transmit(cmd);
+						String value = new String(resp.getData(), Charset.forName("ISO8859-15"));
+						System.out.println("Enter new value (for " +  pd.name() + "): " + value);
+						String input = System.console().readLine();
+						cmd = new CommandAPDU(0x80, 0x04, pd.getRec(), 0x00, input.getBytes("ISO8859-15"));
+						esteid.transmit(cmd);
+					}
+				}
+
+				// Following assumes a "ready" card (-new).
+				if (args.has(OPT_INFO)) {
+					Map<PIN, Byte> counts = esteid.getPINCounters();
+
+					System.out.print("PIN tries remaining:");
+					for (PIN p: PIN.values()) {
+						System.out.print(" " + p.toString() + ": " + counts.get(p) + ";");
+					}
+					System.out.println();
+
+					String docnr = esteid.getPersonalData(PersonalData.DOCUMENT_NR);
+					System.out.println("Doc#: " + docnr);
+					if (!docnr.startsWith("N")) {
+						System.out.println("Cardholder: " + esteid.getPersonalData(PersonalData.GIVEN_NAMES1) + " " + esteid.getPersonalData(PersonalData.SURNAME));
+					}
+					X509Certificate authcert = esteid.readAuthCert();
+					System.out.println("Certificate subject: " + authcert.getSubjectDN());
 				}
 			}
-
-			if (args.has(OPT_VERBOSE) || args.has(OPT_INFO)) {
-				System.out.println("ATR: " + HexUtils.bin2hex(card.getATR().getBytes()));
-				System.out.println("Type: " + esteid.getType());
-			}
-
-			FakeEstEIDManager fake = FakeEstEIDManager.getInstance(esteid);
-
-			if (args.has(OPT_AUTHCERT)) {
-				File f = (File) args.valueOf(OPT_AUTHCERT);
-				fake.send_cert_pem(f, 1);
-			}
-
-			if (args.has(OPT_SIGNCERT)) {
-				File f = (File) args.valueOf(OPT_SIGNCERT);
-				fake.send_cert_pem(f, 2);
-			}
-
-			if (args.has(OPT_AUTHKEY)) {
-				File f = (File) args.valueOf(OPT_AUTHKEY);
-				fake.send_key_pem(f, 1);
-			}
-
-			if (args.has(OPT_SIGNKEY)) {
-				File f = (File) args.valueOf(OPT_SIGNKEY);
-				fake.send_key_pem(f, 2);
-			}
-
-			if (args.has(OPT_GENAUTH)) {
-				fake.send_new_key(1);
-			}
-
-			if (args.has(OPT_GENSIGN)) {
-				fake.send_new_key(2);
-			}
-
-			if (args.has(OPT_NEW) || args.has(OPT_EMULATE)) {
-				fake.make_sample_card(ca, args.has(OPT_CHECK));
-			}
-
-			// FIXME: this is ugly and bad code.
-			if (args.has(OPT_DATA)) {
-				for (PersonalData pd: PersonalData.values()) {
-					CommandAPDU cmd = new CommandAPDU(0x80, 0x04, pd.getRec(), 0x00, 256);
-					ResponseAPDU resp = esteid.transmit(cmd);
-					String value = new String(resp.getData(), Charset.forName("ISO8859-15"));
-					System.out.println("Enter new value (for " +  pd.name() + "): " + value);
-					String input = System.console().readLine();
-					cmd = new CommandAPDU(0x80, 0x04, pd.getRec(), 0x00, input.getBytes("ISO8859-15"));
-					esteid.transmit(cmd);
-				}
-			}
-
-			// Following assumes a "ready" card (-new).
-			if (args.has(OPT_INFO)) {
-				Map<PIN, Byte> counts = esteid.getPINCounters();
-
-				System.out.print("PIN tries remaining:");
-				for (PIN p: PIN.values()) {
-					System.out.print(" " + p.toString() + ": " + counts.get(p) + ";");
-				}
-				System.out.println();
-
-				String docnr = esteid.getPersonalData(PersonalData.DOCUMENT_NR);
-				System.out.println("Doc#: " + docnr);
-				if (!docnr.startsWith("N")) {
-					System.out.println("Cardholder: " + esteid.getPersonalData(PersonalData.GIVEN_NAMES1) + " " + esteid.getPersonalData(PersonalData.SURNAME));
-				}
-				X509Certificate authcert = esteid.readAuthCert();
-				System.out.println("Certificate subject: " + authcert.getSubjectDN());
-			}
-
 
 			if (args.has(OPT_TEST_PINS) || args.has(OPT_TEST)) {
 				if (args.has(OPT_PIN1) ^ args.has(OPT_PIN2) || args.has(OPT_PIN2) ^ args.has(OPT_PUK)) {
@@ -436,5 +511,8 @@ public class CLI {
 				card.disconnect(true);
 			}
 		}
+	}
+	static String pub2pem(RSAPublicKey p) {
+		return "-----BEGIN PUBLIC KEY-----\n" + Base64.getMimeEncoder().encodeToString(p.getEncoded()) + "\n-----END PUBLIC KEY-----";
 	}
 }

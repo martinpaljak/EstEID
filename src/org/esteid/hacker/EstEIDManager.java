@@ -2,6 +2,7 @@ package org.esteid.hacker;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
@@ -25,7 +26,6 @@ import javax.smartcardio.ResponseAPDU;
 
 import org.esteid.EstEID;
 import org.esteid.EstEID.EstEIDException;
-import org.esteid.EstEID.PersonalData;
 import org.esteid.hacker.SecureChannel.SecureChannelException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,11 +46,24 @@ public class EstEIDManager {
 	private static Logger logger = LoggerFactory.getLogger(EstEIDManager.class);
 
 	final CardChannel channel;
+	private Properties properties;
 
 	public EstEIDManager(CardChannel c) {
 		channel = c;
 	}
 
+
+
+
+	public static EstEIDManager getPersoManager(InputStream props, CardChannel c) throws IOException {
+		// Load different options from the
+		Properties p = new Properties();
+		// Input is UTF-8
+		p.load(new InputStreamReader(props, StandardCharsets.UTF_8));
+		EstEIDManager mgr = new EstEIDManager(c);
+		mgr.properties = p;
+		return mgr;
+	}
 
 	public static RSAPublicKey generateKey(SecureChannel c, int key) throws CardException, SecureChannelException {
 		CommandAPDU cmd = new CommandAPDU(0x8C, 0x06, 0x01, key);
@@ -68,24 +81,30 @@ public class EstEIDManager {
 
 	public static void loadCertificate(SecureChannel sc, X509Certificate c, int key) throws CardException, SecureChannelException {
 		try {
-			// Add 0x80 tailing marker
-			byte[] cert = GPUtils.concatenate(c.getEncoded(), new byte[]{(byte) 0x80});
-			logger.trace("Storing certificate: {} ", HexUtils.bin2hex(cert) );
-			for (int pos = 0, len = 0x6F; pos < cert.length; pos += len) {
-				byte [] data = Arrays.copyOfRange(cert, pos, pos + Math.min(len, cert.length - pos));
-				byte p1 = (byte) ((key == 0 ? 0x00 : 0x80) + ((pos >> 8) & 0xFF));
-				byte p2 = (byte) (pos & 0xFF);
-				EstEIDException.check(sc.transmit(new CommandAPDU(0x8C, 0x07, p1, p2, data)));
-			}
+			loadCertificate(sc, c.getEncoded(), key);
 		} catch (CertificateEncodingException e) {
 			throw new RuntimeException("Could not store certificate", e);
 		}
 	}
 
-	static void write_perso_file(SecureChannel sc, Properties pd) throws CardException, SecureChannelException, UnsupportedEncodingException{
+	public static void loadCertificate(SecureChannel sc, byte[] c, int key) throws CardException, SecureChannelException {
+		// Add 0x80 tailing marker
+		byte[] cert = GPUtils.concatenate(c, new byte[]{(byte) 0x80});
+		logger.trace("Storing certificate: {} ", HexUtils.bin2hex(cert) );
+		for (int pos = 0, len = 0x6F; pos < cert.length; pos += len) {
+			byte [] data = Arrays.copyOfRange(cert, pos, pos + Math.min(len, cert.length - pos));
+			byte p1 = (byte) ((key == 0 ? 0x00 : 0x80) + ((pos >> 8) & 0xFF));
+			byte p2 = (byte) (pos & 0xFF);
+			EstEIDException.check(sc.transmit(new CommandAPDU(0x8C, 0x07, p1, p2, data)));
+		}
+	}
+
+
+
+	static void write_perso_file(SecureChannel sc, Properties p) throws CardException, SecureChannelException, UnsupportedEncodingException{
 		for(int i = 1; i <= 16; ++i) {
 			logger.trace("Writing personal data file record {}", i);
-			String record = pd.getProperty("D" + i);
+			String record = p.getProperty("D" + i);
 			if (record == null)
 				continue;
 			byte [] data = record.getBytes("Windows-1252");
@@ -94,6 +113,9 @@ public class EstEIDManager {
 		}
 	}
 
+	void writePersoFile(SecureChannel sc) throws UnsupportedEncodingException, CardException, SecureChannelException {
+		write_perso_file(sc, properties);
+	}
 	static ResponseAPDU set_personalized(SecureChannel sc) throws CardException, SecureChannelException {
 		logger.debug("Setting applet to personalized state");
 		return sc.transmit(new CommandAPDU(0x00, 0x04, 0x00, 0x00));
@@ -170,34 +192,51 @@ public class EstEIDManager {
 		return new CommandAPDU(0x00, 0xA4, 0x04, 0x0C, aid);
 	}
 
-	public static void doit(CardChannel channel, FakeEstEIDCA ca, InputStream props) throws Exception {
-
-		// Load properties
-		Properties p = new Properties();
-		// Input is UTF-8
-		p.load(new InputStreamReader(props, StandardCharsets.UTF_8));
 
 
+	public static GlobalPlatform open_gp(CardChannel c, Properties p) throws CardException, GPException {
 		byte [] gpkey = HexUtils.hex2bin(p.getProperty("GPKEY"));
+		// Open GlobalPlatform
+		GlobalPlatform gp = new GlobalPlatform(c);
+		gp.select();
+		SessionKeyProvider kp = PlaintextKeys.fromMasterKey(new GPKey(gpkey, GPKey.Type.DES3));
+		gp.openSecureChannel(kp, null, 0, EnumSet.of(APDUMode.ENC));
+		return gp;
+	}
+
+	public GlobalPlatform openGlobalPlatform() throws CardException, GPException {
+		return open_gp(channel, properties);
+	}
+
+	public byte[] getCMK(int num) {
+		switch (num) {
+		case 0:
+			return HexUtils.hex2bin(properties.getProperty("CMK_PERSO"));
+		case 1:
+			return HexUtils.hex2bin(properties.getProperty("CMK_PIN"));
+		case 2:
+			return HexUtils.hex2bin(properties.getProperty("CMK_KEY"));
+		case 3:
+			return HexUtils.hex2bin(properties.getProperty("CMK_CERT"));
+		default:
+			throw new IllegalArgumentException("No such CMK: " + num);
+		}
+	}
+	public static void install_applet(GlobalPlatform gp, Properties p) throws CardException, GPException, IOException {
+		// Load the CAP file.
+		CapFile cap = new CapFile(new FileInputStream(p.getProperty("APPLET")));
+		try {
+			// Delete existing instance if present
+			gp.deleteAID(cap.getPackageAID(), true);
+		} catch (GPException e) {
+			System.out.println("Clean card, installing");
+		}
+		gp.loadCapFile(cap);
+
 		byte [] cmk_perso = HexUtils.hex2bin(p.getProperty("CMK_PERSO"));
 		byte [] cmk_pin = HexUtils.hex2bin(p.getProperty("CMK_PIN"));
 		byte [] cmk_key = HexUtils.hex2bin(p.getProperty("CMK_KEY"));
 		byte [] cmk_cert = HexUtils.hex2bin(p.getProperty("CMK_CERT"));
-
-		// Open GlobalPlatform
-		GlobalPlatform gp = new GlobalPlatform(channel);
-		gp.select();
-		SessionKeyProvider kp = PlaintextKeys.fromMasterKey(new GPKey(gpkey, GPKey.Type.DES3));
-		gp.openSecureChannel(kp, null, 0, EnumSet.of(APDUMode.ENC));
-
-		// Load the CAP file.
-		CapFile cap = new CapFile(new FileInputStream(p.getProperty("APPLET")));
-		try {
-			gp.deleteAID(cap.getPackageAID(), true);
-		} catch (GPException e) {
-			System.out.println("Clean card");
-		}
-		gp.loadCapFile(cap);
 
 		byte[] pin1 = p.getProperty("PIN1").getBytes(StandardCharsets.US_ASCII);
 		byte[] pin2 = p.getProperty("PIN2").getBytes(StandardCharsets.US_ASCII);
@@ -228,24 +267,11 @@ public class EstEIDManager {
 		gp.installAndMakeSelectable(cap.getPackageAID(), cap.getAppletAIDs().get(0), null, (byte) (GPData.cardLockPriv | GPData.defaultSelectedPriv), instparams, null);
 
 		// Select installed applet
-		channel.transmit(select_aid_apdu(HexUtils.hex2bin("D23300000045737445494420763335")));
+		gp.getChannel().transmit(select_aid_apdu(HexUtils.hex2bin("D23300000045737445494420763335")));
+	}
 
-		// Open secure channel and write personal data file.
-		SecureChannel sc = SecureChannel.getInstance(channel);
-		sc.mutualAuthenticate(cmk_perso, 0);
-
-		write_perso_file(sc, p);
-		RSAPublicKey k1 = generateKey(sc, 0);
-		RSAPublicKey k2 = generateKey(sc, 1);
-		X509Certificate c1 = ca.generateUserCertificate(k1, false, "MARI-LIIS", "MÄNNIK", "47101010033", "mariliis.mannik@eesti.ee");
-		X509Certificate c2 = ca.generateUserCertificate(k2, true, "MARI-LIIS", "MÄNNIK", "47101010033", "mariliis.mannik@eesti.ee");
-		loadCertificate(sc, c1, 0);
-		loadCertificate(sc, c2, 1);
-		set_personalized(sc);
-
-		// GET DATA via SC
-		//sc.mutualAuthenticate(cmk_pin, 1);
-		System.out.println(HexUtils.bin2hex(sc.transmit(new CommandAPDU(0x00, 0xCA, 0x01, 0x00, 0x03)).getBytes()));
+	public void installApplet(GlobalPlatform gp) throws CardException, GPException, IOException {
+		install_applet(gp, properties);
 	}
 }
 
