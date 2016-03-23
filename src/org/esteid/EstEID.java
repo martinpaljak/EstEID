@@ -359,7 +359,7 @@ public final class EstEID {
 		byte[] bb = new byte[bytes];
 		for (int i = 0; i<= (bytes / chunksize); i++) {
 			final int offset = i*chunksize;
-			ResponseAPDU r = transmit(new CommandAPDU(0x00, INS_READ_BINARY, offset>>8, offset & 0xFF, 256));
+			ResponseAPDU r = transmit(new CommandAPDU(0x00, INS_READ_BINARY, offset>>8, offset & 0xFF, chunksize));
 			try {
 				check(r);
 			} catch (EstEIDException e) {
@@ -386,7 +386,7 @@ public final class EstEID {
 		select(FID_3F00);
 		select(FID_EEEE);
 		select(fid);
-		return read_file(0x600);
+		return read_file(0x800);
 	}
 	private X509Certificate readCertificate(int fid) throws CardException {
 		try {

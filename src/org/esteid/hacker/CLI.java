@@ -18,6 +18,7 @@
 package org.esteid.hacker;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -55,7 +56,6 @@ import org.esteid.EstEID.CardType;
 import org.esteid.EstEID.PIN;
 import org.esteid.EstEID.PersonalData;
 
-import pro.javacard.gp.GlobalPlatform;
 import pro.javacard.vre.VJCREProvider;
 import pro.javacard.vre.VRE;
 
@@ -79,7 +79,7 @@ public class CLI {
 	private static final String OPT_SIGNKEY = "signkey";
 
 	private static final String OPT_LIST = "list";
-	private static final String OPT_INSTALL = "install";
+	private static final String OPT_PERSO = "perso";
 	private static final String OPT_NEW = "new";
 	private static final String OPT_CHECK = "check";
 
@@ -90,11 +90,14 @@ public class CLI {
 	private static final String OPT_TEST = "test";
 	private static final String OPT_TEST_PINS = "test-pins";
 	private static final String OPT_TEST_CRYPTO = "test-crypto";
-
+	private static final String OPT_COUNTERS = "counters";
 
 	private static final String OPT_PIN1 = "pin1";
 	private static final String OPT_PIN2 = "pin2";
 	private static final String OPT_PUK = "puk";
+	private static final String OPT_CMK = "cmk";
+	private static final String OPT_KEY = "key";
+
 
 	private static final String OPT_T0 = "t0";
 	private static final String OPT_T1 = "t1";
@@ -126,7 +129,7 @@ public class CLI {
 		parser.accepts(OPT_SIGNKEY, "Load sign key (PEM)").withRequiredArg().ofType(File.class);
 
 		// New card generation
-		parser.accepts(OPT_INSTALL, "Install FakeEstEIDManager applet").withOptionalArg();
+		parser.accepts(OPT_PERSO, "Personalize a card").withRequiredArg().ofType(File.class);
 		parser.accepts(OPT_NEW, "Populate a new \"Mari-Liis Männik\"");
 		parser.accepts(OPT_CHECK, "Check generated keys for consistency");
 
@@ -138,11 +141,15 @@ public class CLI {
 		parser.accepts(OPT_TEST, "Run EstEID test-suite");
 		parser.accepts(OPT_TEST_CRYPTO, "Run only crypto tests");
 		parser.accepts(OPT_TEST_PINS, "Run only PIN tests");
-
+		parser.accepts(OPT_COUNTERS, "Read counters");
 
 		parser.accepts(OPT_PIN1, "PIN1 of the tested card").withRequiredArg();
 		parser.accepts(OPT_PIN2, "PIN2 of the tested card").withRequiredArg();
 		parser.accepts(OPT_PUK, "PUK of the tested card").withRequiredArg();
+
+		parser.accepts(OPT_CMK, "Use CMK X").withRequiredArg().ofType(Integer.class);
+		parser.accepts(OPT_KEY, "CMK X value").withRequiredArg();
+
 
 		parser.accepts(OPT_T0, "Use T=0");
 		parser.accepts(OPT_T1, "Use T=1");
@@ -183,6 +190,17 @@ public class CLI {
 		if (args.has(OPT_VERSION)) {
 			System.out.println("EstEID hacker v0.1");
 		}
+
+		if (args.has(OPT_DEBUG)) {
+			// Set up slf4j simple in a way that pleases us
+			System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "debug");
+			System.setProperty("org.slf4j.simpleLogger.showThreadName", "false");
+			System.setProperty("org.slf4j.simpleLogger.showShortLogName", "true");
+			System.setProperty("org.slf4j.simpleLogger.levelInBrackets", "true");
+		} else {
+			System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "warn");
+		}
+
 
 		// Load or generate a CA
 		FakeEstEIDCA ca = new FakeEstEIDCA();
@@ -303,17 +321,6 @@ public class CLI {
 				card.disconnect(true);
 			}
 
-
-			if (args.has(OPT_INSTALL)) {
-				// Install the applet
-				Card c = term.connect("*");
-				GlobalPlatform gp = new GlobalPlatform(c.getBasicChannel());
-				gp.imFeelingLucky();
-				gp.uninstallDefaultSelected(true);
-				System.err.println("Use GP utility directly for loading");
-				c.disconnect(true);
-			}
-
 			String protocol = "*";
 			if (args.has(OPT_T0))
 				protocol = "T=0";
@@ -322,6 +329,18 @@ public class CLI {
 
 			card = term.connect(protocol);
 			EstEID esteid = EstEID.getInstance(card.getBasicChannel());
+
+			if (args.has(OPT_PERSO)) {
+				EstEIDManager.doit(card.getBasicChannel(), ca, new FileInputStream((File)args.valueOf(OPT_PERSO)));
+			}
+
+			if (args.has(OPT_CMK) && args.has(OPT_KEY)) {
+				SecureChannel sc = SecureChannel.getInstance(card.getBasicChannel());
+				sc.mutualAuthenticate(HexUtils.hex2bin((String)args.valueOf(OPT_KEY)), (Integer)args.valueOf(OPT_CMK));
+				if (args.has(OPT_COUNTERS)) {
+					System.out.println(HexUtils.bin2hex(sc.transmit(new CommandAPDU(HexUtils.hex2bin("00CA040000"))).getBytes()));
+				}
+			}
 
 			if (args.has(OPT_VERBOSE) || args.has(OPT_INFO)) {
 				System.out.println("ATR: " + HexUtils.bin2hex(card.getATR().getBytes()));
