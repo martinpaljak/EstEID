@@ -1,11 +1,11 @@
-# EstEID hacker
+# EstEID hacker &nbsp; [![Build Status](https://travis-ci.org/martinpaljak/esteidhacker.svg?branch=master)](https://travis-ci.org/martinpaljak/esteidhacker)
 
-Java ~~utilities~~ source code for everything and anything related to [EstEID](http://esteid.org):
+Java ~~utilities~~ source code for everything and anything related to [EstEID](https://esteid.org):
 
 * [EstEID.java](#esteidjava)
-* [FakeEstEID.java](src/esteidhacker/FakeEstEID.java) - utility for working with a [FakeEstEIDApplet](https://github.com/martinpaljak/AppletPlayground/wiki/FakeEstEID) instance. Supports emulation inside [vJCRE](https://github.com/martinpaljak/vJCRE#import-projavacardvre).
+* [FakeEstEID.java](src/org/esteid/hacker/FakeEstEID.java) - utility for working with a [FakeEstEIDApplet](https://github.com/martinpaljak/AppletPlayground/wiki/FakeEstEID) instance. Supports emulation inside [vJCRE](https://github.com/martinpaljak/vJCRE#import-projavacardvre).
 * [FakeEstEIDCA](#fakeesteidca)
-* [CLI.java](src/esteidhacker/CLI.java) - code of the command line utility that serves as usage documentation.
+* [CLI.java](src/org/esteid/hacker/CLI.java) - code of the command line utility that serves as usage documentation.
 
 ## Usage
 * Fetch and build the software (requires Unix-like OS)
@@ -14,6 +14,8 @@ Java ~~utilities~~ source code for everything and anything related to [EstEID](h
         cd esteidhacker
         ant
 
+
+### Emulation
 * Create a new FakeEstEID card (requires a [supported JavaCard](https://github.com/martinpaljak/GlobalPlatform/wiki/TestedCards)):
         
         java -jar esteid.jar -install -ca fake.ca -new
@@ -69,6 +71,22 @@ Java ~~utilities~~ source code for everything and anything related to [EstEID](h
         $ java -jar esteid.jar -clone
 
 
+### Personalization
+        $ java -jar esteid.jar -perso test.conf -install # load the applet
+        $ java -jar esteid.jar -perso test.conf -data # store personal data file
+        $ java -jar esteid.jar -perso test.conf -genauth # generate authentication key
+        $ java -jar esteid.jar -perso test.conf -gensign # generate signature key
+        # Now generate certificates from public keys
+        $ java -jar esteid.jar -perso test.conf -authcert auth.pem # load authentication certificate from auth.pem
+        $ java -jar esteid.jar -perso test.conf -authcert sign.pem # load signature certificate from sign.pem
+        $ java -jar esteid.jar -perso test.conf -finalize # finalize personalization
+        # Be sure the specify the right CMK!
+        $ java -jar esteid.jar -cmk 1 -key XX..XX -loadpins -pin1 0090 -pin2 01497 -puk 17258403 # does not require PIN1
+        $ java -jar esteid.jar -cmk 2 -key XX..XX -genauth -pin1 0090 # generate new authentication key, requires PIN1
+        $ java -jar esteid.jar -cmk 2 -key XX..XX -gensign -pin1 0090 # generate new signature key, requires PIN1
+        $ java -jar esteid.jar -cmk 3 -key xx..XX -authcert auth.pem -pin1 0090 # load new authentication signature, requires PIN1
+        $ java -jar esteid.jar -cmk 3 -key xx..XX -authcert auth.pem -pin1 0090 # load new authentication signature, requires PIN1
+
 ## Dependencies
 * [FakeEstEIDApplet](https://github.com/martinpaljak/AppletPlayground/wiki/FakeEstEID) from [AppletPlayground](https://github.com/martinpaljak/AppletPlayground#applet-playground) (MIT)
 * [vJCRE](https://github.com/martinpaljak/vJCRE#import-projavacardvre) (LGPL)
@@ -95,7 +113,7 @@ Mixed LGPL/MIT, please check individual files! Other options available upon requ
 Encapsulates all the APDU protocol and exposes high-level and meaningful API for making operations with the card.
 Can talk to any PC/SC terminal or somethig else exposd via `javax.smartcardio`.
 
-Source: [EstEID.java](src/esteidhacker/EstEID.java)
+Source: [EstEID.java](src/org/esteid/EstEID.java)
 
 #### Similar projects
 * https://github.com/sleepless/jesteid
@@ -118,4 +136,4 @@ Source: [FakeEstEIDCA.java](src/esteidhacker/FakeEstEIDCA.java)
 * `sk` utility in [python-esteid](https://github.com/martinpaljak/python-esteid)
 
 ----
-All about the [EstEID](http://esteid.org)
+All about the [EstEID](https://esteid.org)
