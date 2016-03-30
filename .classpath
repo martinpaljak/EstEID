@@ -7,7 +7,6 @@
 	<classpathentry kind="lib" path="lib/apdu4j-pcsc.jar"/>
 	<classpathentry kind="lib" path="lib/gp.jar"/>
 	<classpathentry kind="lib" path="lib/vjcre.jar"/>
-	<classpathentry kind="lib" path="lib/FakeEstEID.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="output" path="bin"/>

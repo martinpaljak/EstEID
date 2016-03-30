@@ -23,6 +23,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.charset.Charset;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
@@ -138,30 +140,30 @@ public class CLI {
 		parser.accepts(OPT_NEW, "Populate a new \"Mari-Liis Männik\"");
 		parser.accepts(OPT_CHECK, "Check generated keys for consistency");
 		parser.accepts(OPT_INSTALL, "Install applet");
+		parser.accepts(OPT_DATA, "Edit or write the personal data file");
 		parser.accepts(OPT_FINALIZE, "Finalize personalization");
 
 
 		// Clone a card
 		parser.accepts(OPT_CLONE, "Clone the card");
-		parser.accepts(OPT_DATA, "Edit or write the personal data file");
 
-		parser.accepts(OPT_EMULATE, "Use FakeEstEIDManagerApplet intance inside vJCRE");
+		parser.accepts(OPT_EMULATE, "Emulate applet intance from JAR inside vJCRE").withRequiredArg().ofType(File.class);
 		parser.accepts(OPT_TEST, "Run EstEID test-suite");
 		parser.accepts(OPT_TEST_CRYPTO, "Run only crypto tests");
 		parser.accepts(OPT_TEST_PINS, "Run only PIN tests");
-		parser.accepts(OPT_COUNTERS, "Read counters");
 
 		parser.accepts(OPT_PIN1, "PIN1 of the tested card").withRequiredArg();
 		parser.accepts(OPT_PIN2, "PIN2 of the tested card").withRequiredArg();
 		parser.accepts(OPT_PUK, "PUK of the tested card").withRequiredArg();
 
+		// CMK authentication and related tasks
 		parser.accepts(OPT_CMK, "Use CMK X").withRequiredArg().ofType(Integer.class);
 		parser.accepts(OPT_KEY, "CMK X value").withRequiredArg();
+		parser.accepts(OPT_COUNTERS, "Read counters");
 
-
+		// Technical options
 		parser.accepts(OPT_T0, "Use T=0");
 		parser.accepts(OPT_T1, "Use T=1");
-
 
 		// Parse arguments
 		try {
@@ -188,6 +190,7 @@ public class CLI {
 
 	public static void main(String argv[]) throws Exception {
 
+		// Default PIN strings
 		String pin1 = EstEID.PIN1String;
 		String pin2 = EstEID.PIN2String;
 		String puk = EstEID.PUKString;
@@ -223,7 +226,8 @@ public class CLI {
 		} else if (args.has(OPT_EMULATE)) {
 			ca.generate();
 		} else if (args.has(OPT_NEW) || args.has(OPT_RESIGN)) {
-			throw new IllegalArgumentException("Need a CA!");
+			System.err.println("Need a CA!");
+			System.exit(1);
 		}
 
 		if (args.has(OPT_PIN1)) {
@@ -236,6 +240,7 @@ public class CLI {
 			puk = (String) args.valueOf(OPT_PUK);
 		}
 
+		// Resign a certificate with the fake CA.
 		if (args.has(OPT_RESIGN)) {
 			File f = (File) args.valueOf(OPT_RESIGN);
 			PEMParser pem = new PEMParser(new FileReader(f));
@@ -256,9 +261,11 @@ public class CLI {
 			if (args.has(OPT_EMULATE)) {
 				// Load FakeEstEIDManagerApplet into vJCRE emulator
 				VRE vre = VRE.getInstance();
-
 				AID aid = AID.fromBytes(FakeEstEIDManager.aid);
-				vre.load(FakeEstEIDManager.class, aid);
+				// Load the class from specified JAR.
+				URLClassLoader loader = new URLClassLoader(new URL[] { ((File)args.valueOf(OPT_EMULATE)).toURI().toURL()}, CLI.class.getClassLoader());
+				Class<?> cls = loader.loadClass("org.esteid.applet.FakeEstEID");
+				vre.load(cls, aid);
 				vre.install(aid, true);
 				// Establish connection to the applet
 				term = TerminalFactory.getInstance("PC/SC", vre, new VJCREProvider()).terminals().list().get(0);

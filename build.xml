@@ -12,7 +12,6 @@
     <get src="https://github.com/martinpaljak/apdu4j/releases/download/v0.0.34/apdu4j-pcsc.jar" dest="lib" verbose="true" skipexisting="true"/>
     <get src="https://github.com/martinpaljak/GlobalPlatformPro/releases/download/v0.3.7/gp.jar" dest="lib" verbose="true" skipexisting="true"/>
     <get src="https://github.com/martinpaljak/vJCRE/releases/download/r1/vjcre.jar" dest="lib" verbose="true" skipexisting="true"/>
-    <get src="https://github.com/martinpaljak/esteid-applets/releases/download/v0.0.2/FakeEstEID.jar" dest="lib" verbose="true" skipexisting="true"/>
     <checksum algorithm="SHA-256" file="lib/jopt-simple-4.9.jar" property="26c5856e954b5f864db76f13b86919b59c6eecf9fd930b96baa8884626baf2f5" verifyProperty="joptOK"/>
     <checksum algorithm="SHA-256" file="lib/slf4j-api-1.7.13.jar" property="20d68d0c2e4fb984ffc164852b8b68df49a2b8716076f576881bcef7649a0e35" verifyProperty="slfjapiOK"/>
     <checksum algorithm="SHA-256" file="lib/slf4j-simple-1.7.13.jar" property="4709c0b535057c6a9a794da9522b1291de9c72b6d61f41b7ecf63156bc7bee35" verifyProperty="slfjsimpleOK"/>
@@ -21,7 +20,6 @@
     <checksum algorithm="SHA-256" file="lib/apdu4j-pcsc.jar" property="c83739847a7b1e323e4d0cad94fe50858ecc9435a59ee429d55ec02934d52a30" verifyProperty="apduOK"/>
     <checksum algorithm="SHA-256" file="lib/gp.jar" property="ec41e4294fe4277183254887da3303e1aba817a20d20c78713ef453b66f4595b" verifyProperty="gpOK"/>
     <checksum algorithm="SHA-256" file="lib/vjcre.jar" property="20260d4c63d54eba540eb6eee931b9bff9df0ad97823841848126ea36c04e6b4" verifyProperty="vjcreOK"/>
-    <checksum algorithm="SHA-256" file="lib/FakeEstEID.jar" property="c6387f4750c286e3faf566bfac6acd53f46c327ee60f22e796700939c14bf2f5" verifyProperty="appletOK"/>
     <fail message="Checksum failure">
       <condition>
         <or>
@@ -33,7 +31,6 @@
           <isfalse value="${apduOK}"/>
           <isfalse value="${gpOK}"/>
           <isfalse value="${vjcreOK}"/>
-          <isfalse value="${appletOK}"/>
         </or>
       </condition>
     </fail>
