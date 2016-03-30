@@ -264,7 +264,8 @@ public class CLI {
 				term = TerminalFactory.getInstance("PC/SC", vre, new VJCREProvider()).terminals().list().get(0);
 			} else {
 				if (args.has(OPT_LIST)) {
-					TerminalFactory tf = TerminalManager.getTerminalFactory();
+					// Use the default
+					TerminalFactory tf = TerminalManager.getTerminalFactory(null);
 					CardTerminals terms = tf.terminals();
 					System.out.println("Found terminals: " + terms.list().size());
 					for (CardTerminal t: terms.list()) {
@@ -280,7 +281,7 @@ public class CLI {
 					}
 				}
 				// Connect to the found reader.
-				term = TerminalManager.getTheReader();
+				term = TerminalManager.getTheReader(null);
 			}
 
 			if (args.has(OPT_DEBUG)) {
