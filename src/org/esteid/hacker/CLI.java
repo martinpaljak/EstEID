@@ -270,8 +270,10 @@ public class CLI {
 				VRE vre = VRE.getInstance();
 				AID aid = AID.fromBytes(FakeEstEIDManager.aid);
 				// Load the class from specified JAR.
-				URLClassLoader loader = new URLClassLoader(new URL[] { ((File)args.valueOf(OPT_EMULATE)).toURI().toURL()}, CLI.class.getClassLoader());
-				Class<?> cls = loader.loadClass("org.esteid.applet.FakeEstEID");
+				final Class<?> cls;
+				try (URLClassLoader loader = new URLClassLoader(new URL[] { ((File)args.valueOf(OPT_EMULATE)).toURI().toURL()}, CLI.class.getClassLoader())) {
+					cls = loader.loadClass("org.esteid.applet.FakeEstEID");
+				}
 				vre.load(cls, aid);
 				vre.install(aid, true);
 				// Establish connection to the applet
