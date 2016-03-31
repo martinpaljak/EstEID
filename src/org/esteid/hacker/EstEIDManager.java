@@ -52,9 +52,6 @@ public class EstEIDManager {
 		channel = c;
 	}
 
-
-
-
 	public static EstEIDManager getPersoManager(InputStream props, CardChannel c) throws IOException {
 		// Load different options from the
 		Properties p = new Properties();
@@ -222,6 +219,8 @@ public class EstEIDManager {
 			throw new IllegalArgumentException("No such CMK: " + num);
 		}
 	}
+
+
 	public static void install_applet(GlobalPlatform gp, Properties p) throws CardException, GPException, IOException {
 		// Load the CAP file.
 		CapFile cap = new CapFile(new FileInputStream(p.getProperty("APPLET")));
@@ -242,32 +241,43 @@ public class EstEIDManager {
 		byte[] pin2 = p.getProperty("PIN2").getBytes(StandardCharsets.US_ASCII);
 		byte[] puk = p.getProperty("PUK").getBytes(StandardCharsets.US_ASCII);
 
-		// Build installation parameters
-		ByteArrayOutputStream params = new ByteArrayOutputStream();
-		// CMK-s
-		params.write(cmk_perso.length);
-		params.write(cmk_perso);
-		params.write(cmk_pin.length);
-		params.write(cmk_pin);
-		params.write(cmk_key.length);
-		params.write(cmk_key);
-		params.write(cmk_cert.length);
-		params.write(cmk_cert);
-		// PIN-s
-		params.write(pin1.length);
-		params.write(pin1);
-		params.write(pin2.length);
-		params.write(pin2);
-		params.write(puk.length);
-		params.write(puk);
-
-		byte [] instparams = params.toByteArray();
-		instparams = GPUtils.concatenate(new byte[]{(byte)0xC9, (byte) instparams.length}, instparams);
+		byte [] instparams = installation_parameters(cmk_perso, cmk_pin, cmk_key, cmk_cert, pin1, pin2, puk);
 
 		gp.installAndMakeSelectable(cap.getPackageAID(), cap.getAppletAIDs().get(0), null, (byte) (GPData.cardLockPriv | GPData.defaultSelectedPriv), instparams, null);
 
 		// Select installed applet
 		gp.getChannel().transmit(select_aid_apdu(HexUtils.hex2bin("D23300000045737445494420763335")));
+	}
+
+	public static byte[] installation_parameters(byte[] cmk_perso, byte[] cmk_pin, byte[] cmk_key, byte[] cmk_cert, byte[] pin1, byte [] pin2, byte [] puk) {
+		try {
+			// Build installation parameters
+			ByteArrayOutputStream params = new ByteArrayOutputStream();
+			// CMK-s
+			params.write(cmk_perso.length);
+			params.write(cmk_perso);
+			params.write(cmk_pin.length);
+			params.write(cmk_pin);
+			params.write(cmk_key.length);
+			params.write(cmk_key);
+			params.write(cmk_cert.length);
+			params.write(cmk_cert);
+			// PIN-s
+			params.write(pin1.length);
+			params.write(pin1);
+			params.write(pin2.length);
+			params.write(pin2);
+			params.write(puk.length);
+			params.write(puk);
+
+			// Concatenate with header
+			byte [] instparams = params.toByteArray();
+			instparams = GPUtils.concatenate(new byte[]{(byte)0xC9, (byte) instparams.length}, instparams);
+			return instparams;
+		}
+		catch (IOException e) {
+			throw new RuntimeException("Coult not construct installation parameters", e);
+		}
 	}
 
 	public void installApplet(GlobalPlatform gp) throws CardException, GPException, IOException {
