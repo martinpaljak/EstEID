@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import apdu4j.HexUtils;
 import pro.javacard.gp.CapFile;
+import pro.javacard.gp.GPCrypto;
 import pro.javacard.gp.GPData;
 import pro.javacard.gp.GPException;
 import pro.javacard.gp.GPKeySet.GPKey;
@@ -278,6 +279,11 @@ public class EstEIDManager {
 		catch (IOException e) {
 			throw new RuntimeException("Coult not construct installation parameters", e);
 		}
+	}
+
+	public static void loadPINCodes(SecureChannel sc, String pin1, String pin2, String puk) throws CardException, SecureChannelException {
+		CommandAPDU replace = new CommandAPDU(0x00, 0x01, 0x00, 0x00, GPUtils.concatenate(pin1.getBytes(), pin2.getBytes(), puk.getBytes()));
+		EstEIDException.check(sc.transmit(replace), "Could not replace PIN codes");
 	}
 
 	public void installApplet(GlobalPlatform gp) throws CardException, GPException, IOException {

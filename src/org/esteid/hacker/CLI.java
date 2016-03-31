@@ -98,6 +98,8 @@ public class CLI {
 	private static final String OPT_TEST_PINS = "test-pins";
 	private static final String OPT_TEST_CRYPTO = "test-crypto";
 	private static final String OPT_COUNTERS = "counters";
+	private static final String OPT_LOADPINS = "loadpins";
+
 
 	private static final String OPT_PIN1 = "pin1";
 	private static final String OPT_PIN2 = "pin2";
@@ -162,6 +164,7 @@ public class CLI {
 		parser.accepts(OPT_CMK, "Use CMK X").withRequiredArg().ofType(Integer.class);
 		parser.accepts(OPT_KEY, "CMK X value").withRequiredArg();
 		parser.accepts(OPT_COUNTERS, "Read counters");
+		parser.accepts(OPT_LOADPINS, "Load new PIN codes");
 
 		// Technical options
 		parser.accepts(OPT_T0, "Use T=0");
@@ -373,6 +376,7 @@ public class CLI {
 					RSAPublicKey k2 = EstEIDManager.generateKey(sc, 1);
 
 					// Generate fake certificates
+					// FIXME: pick values from .conf file
 					X509Certificate c1 = ca.generateUserCertificate(k1, false, "MARI-LIIS", "MÄNNIK", "47101010033", "mariliis.mannik@eesti.ee");
 					X509Certificate c2 = ca.generateUserCertificate(k2, true, "MARI-LIIS", "MÄNNIK", "47101010033", "mariliis.mannik@eesti.ee");
 
@@ -416,12 +420,14 @@ public class CLI {
 				}
 			} else if (args.has(OPT_CMK) && args.has(OPT_KEY)) {
 				// Post-perso. Requires PIN, so use it if presented.
-				if (args.has(OPT_PIN1)) {
+				if (args.has(OPT_PIN1) && !args.has(OPT_LOADPINS)) {
 					card.getBasicChannel().transmit(EstEID.verify_apdu(EstEID.PIN1, (String)args.valueOf(OPT_PIN1)));
 				}
 				SecureChannel sc = SecureChannel.getInstance(card.getBasicChannel());
 				sc.mutualAuthenticate(HexUtils.hex2bin((String)args.valueOf(OPT_KEY)), (Integer)args.valueOf(OPT_CMK));
-				if (args.has(OPT_COUNTERS)) {
+				if (args.has(OPT_LOADPINS)) {
+					EstEIDManager.loadPINCodes(sc, pin1, pin2, puk);
+				} else if (args.has(OPT_COUNTERS)) {
 					System.out.println(HexUtils.bin2hex(sc.transmit(new CommandAPDU(HexUtils.hex2bin("00CA040000"))).getBytes()));
 				} else if (args.has(OPT_GENAUTH)) {
 					RSAPublicKey pubkey = EstEIDManager.generateKey(sc, 0);
