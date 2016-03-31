@@ -108,6 +108,8 @@ public class CLI {
 
 	private static final String OPT_T0 = "t0";
 	private static final String OPT_T1 = "t1";
+	private static final String OPT_EXCLUSIVE = "exclusive";
+
 
 	private static OptionSet parseArguments(String argv[]) throws IOException {
 		OptionSet args = null;
@@ -164,6 +166,8 @@ public class CLI {
 		// Technical options
 		parser.accepts(OPT_T0, "Use T=0");
 		parser.accepts(OPT_T1, "Use T=1");
+		parser.accepts(OPT_EXCLUSIVE, "Use exclusive mode");
+
 
 		// Parse arguments
 		try {
@@ -343,7 +347,15 @@ public class CLI {
 			else if (args.has(OPT_T1))
 				protocol = "T=1";
 
+			if (args.has(OPT_EXCLUSIVE)) {
+				protocol = "EXCLUSIVE;" + protocol;
+			}
+
 			card = term.connect(protocol);
+
+			// We use JNA, thus the exclusive access results in SCardBeginTransaction()
+			card.beginExclusive();
+
 			EstEID esteid = EstEID.getInstance(card.getBasicChannel());
 
 			if (args.has(OPT_PERSO)) {
@@ -516,6 +528,7 @@ public class CLI {
 			}
 		} finally {
 			if (card != null) {
+				card.endExclusive();
 				card.disconnect(true);
 			}
 		}
