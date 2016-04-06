@@ -28,8 +28,7 @@ public class Legacy {
 	 * @return
 	 */
 	private static String hex2numbers(String s) {
-		return s.toUpperCase().replace('A', '0').replace('B', '1').replace('C', '2').replace('D', '3')
-				.replace('E', '4').replace('F', '5');
+		return s.toUpperCase().replace('A', '0').replace('B', '1').replace('C', '2').replace('D', '3').replace('E', '4').replace('F', '5');
 	}
 
 	/**
