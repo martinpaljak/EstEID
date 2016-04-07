@@ -19,6 +19,7 @@ deploy:
   provider: releases
   file:
   - esteid.jar
+  - esteid-app.jar
   skip_cleanup: true
   on:
     tags: true
