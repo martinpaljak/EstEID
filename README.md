@@ -14,15 +14,16 @@ Java ~~utilities~~ source code for everything and anything related to [EstEID](h
         cd esteidhacker
         ant
 
+* In this README `esteid` is used as an alias for `java -jar esteid-app.jar`
 
 ### Emulation
 * Create a new FakeEstEID card (requires a [supported JavaCard](https://github.com/martinpaljak/GlobalPlatform/wiki/TestedCards)):
         
-        java -jar esteid.jar -install -ca fake.ca -new
+        esteid -install -ca fake.ca -new
 
 * Run EstEID test-suite against a real card (via PC/SC):
 
-        $ java -jar esteid.jar -info -test-crypto -pin1 XXXX -pin2 YYYYY 
+        $ esteid -info -test-crypto -pin1 XXXX -pin2 YYYYY 
         ATR:  3BFE1800008031FE45803180664090A4162A00830F9000EF
         Type: JavaCard2011
         PIN tries remaining: PIN1: 3; PIN2: 3; PUK: 1;
@@ -38,7 +39,7 @@ Java ~~utilities~~ source code for everything and anything related to [EstEID](h
 
 * Run EstEID test-suite against a real test Digi-ID card (via PC/SC):
 
-        $ java -jar esteid.jar -info -test
+        $ esteid -info -test
         ATR:  3BFE9400FF80B1FA451F034573744549442076657220312E3043
         Type: DigiID
         PIN tries remaining: PIN1: 3; PIN2: 3; PUK: 3;
@@ -52,7 +53,7 @@ Java ~~utilities~~ source code for everything and anything related to [EstEID](h
 
 * Run EstEID test-suite against an emulated card (read: test the FakeEstEIDApplet):
         
-        $ java -jar esteid.jar -emulate -info -test
+        $ esteid -emulate -info -test
         ATR:  3B80800101
         Type: AnyJavaCard
         PIN tries remaining: PIN1: 3; PIN2: 3; PUK: 3;
@@ -68,24 +69,24 @@ Java ~~utilities~~ source code for everything and anything related to [EstEID](h
 
 * Clone a card
 
-        $ java -jar esteid.jar -clone
+        $ esteid -clone
 
 
 ### Personalization
-        $ java -jar esteid.jar -perso test.conf -install # load the applet
-        $ java -jar esteid.jar -perso test.conf -data # store personal data file
-        $ java -jar esteid.jar -perso test.conf -genauth # generate authentication key
-        $ java -jar esteid.jar -perso test.conf -gensign # generate signature key
+        $ esteid -perso test.conf -install # load the applet
+        $ esteid -perso test.conf -data # store personal data file
+        $ esteid -perso test.conf -genauth # generate authentication key
+        $ esteid -perso test.conf -gensign # generate signature key
         # Now generate certificates from public keys
-        $ java -jar esteid.jar -perso test.conf -authcert auth.pem # load authentication certificate from auth.pem
-        $ java -jar esteid.jar -perso test.conf -authcert sign.pem # load signature certificate from sign.pem
-        $ java -jar esteid.jar -perso test.conf -finalize # finalize personalization
+        $ esteid -perso test.conf -authcert auth.pem # load authentication certificate from auth.pem
+        $ esteid -perso test.conf -authcert sign.pem # load signature certificate from sign.pem
+        $ esteid -perso test.conf -finalize # finalize personalization
         # Be sure the specify the right CMK!
-        $ java -jar esteid.jar -cmk 1 -key XX..XX -loadpins -pin1 0090 -pin2 01497 -puk 17258403 # does not require PIN1
-        $ java -jar esteid.jar -cmk 2 -key XX..XX -genauth -pin1 0090 # generate new authentication key, requires PIN1
-        $ java -jar esteid.jar -cmk 2 -key XX..XX -gensign -pin1 0090 # generate new signature key, requires PIN1
-        $ java -jar esteid.jar -cmk 3 -key xx..XX -authcert auth.pem -pin1 0090 # load new authentication signature, requires PIN1
-        $ java -jar esteid.jar -cmk 3 -key xx..XX -authcert auth.pem -pin1 0090 # load new authentication signature, requires PIN1
+        $ esteid -cmk 1 -key XX..XX -loadpins -pin1 0090 -pin2 01497 -puk 17258403 # does not require PIN1
+        $ esteid -cmk 2 -key XX..XX -genauth -pin1 0090 # generate new authentication key, requires PIN1
+        $ esteid -cmk 2 -key XX..XX -gensign -pin1 0090 # generate new signature key, requires PIN1
+        $ esteid -cmk 3 -key xx..XX -authcert auth.pem -pin1 0090 # load new authentication signature, requires PIN1
+        $ esteid -cmk 3 -key xx..XX -authcert auth.pem -pin1 0090 # load new authentication signature, requires PIN1
 
 ## Dependencies
 * [FakeEstEIDApplet](https://github.com/martinpaljak/AppletPlayground/wiki/FakeEstEID) from [AppletPlayground](https://github.com/martinpaljak/AppletPlayground#applet-playground) (MIT)
