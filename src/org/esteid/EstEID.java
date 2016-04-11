@@ -587,7 +587,7 @@ public final class EstEID {
 
 	static String make_random_pin(int len) {
 		try {
-			return hex2numbers(new BigInteger(len*8, SecureRandom.getInstanceStrong()).toString(16)).substring(0, len);
+			return hex2numbers(new BigInteger(len*8, SecureRandom.getInstance("SHA1PRNG")).toString(16)).substring(0, len);
 		} catch (NoSuchAlgorithmException e) {
 			throw new RuntimeException("Bad environment", e);
 		}
