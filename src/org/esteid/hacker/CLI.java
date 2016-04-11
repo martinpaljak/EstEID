@@ -375,13 +375,13 @@ public class CLI {
 					SecureChannel sc = SecureChannel.getInstance(gp.getChannel());
 					sc.mutualAuthenticate(mgr.getCMK(0), 0);
 
+					mgr.writePersoFile(sc);
 					RSAPublicKey k1 = EstEIDManager.generateKey(sc, 0);
 					RSAPublicKey k2 = EstEIDManager.generateKey(sc, 1);
 
 					// Generate fake certificates
-					// FIXME: pick values from .conf file
-					X509Certificate c1 = ca.generateUserCertificate(k1, false, "MARI-LIIS", "MÄNNIK", "47101010033", "mariliis.mannik@eesti.ee");
-					X509Certificate c2 = ca.generateUserCertificate(k2, true, "MARI-LIIS", "MÄNNIK", "47101010033", "mariliis.mannik@eesti.ee");
+					X509Certificate c1 = ca.generateUserCertificate(k1, false, mgr.getProperty("D2"), mgr.getProperty("D1"), mgr.getProperty("D7"), mgr.getProperty("EMAIL"));
+					X509Certificate c2 = ca.generateUserCertificate(k2, true, mgr.getProperty("D2"), mgr.getProperty("D1"), mgr.getProperty("D7"), mgr.getProperty("EMAIL"));
 
 					// Load certificates
 					EstEIDManager.loadCertificate(sc, c1, 0);
@@ -401,9 +401,8 @@ public class CLI {
 					if (args.has(OPT_DATA)) {
 						// Write personal data file
 						mgr.writePersoFile(sc);
-					} else if (args.has(OPT_FINALIZE)) {
-						EstEIDManager.set_personalized(sc);
-					} else if (args.has(OPT_GENAUTH)) {
+					}
+					if (args.has(OPT_GENAUTH)) {
 						RSAPublicKey pubkey = EstEIDManager.generateKey(sc, 0);
 						if (args.has(OPT_CA)) {
 							X509Certificate crt = ca.generateUserCertificate(pubkey, false,  mgr.getProperty("D2"), mgr.getProperty("D1"), mgr.getProperty("D7"), mgr.getProperty("EMAIL"));
@@ -412,7 +411,9 @@ public class CLI {
 						} else {
 							System.out.println(pub2pem(pubkey));
 						}
-					} else if (args.has(OPT_GENSIGN)) {
+					}
+
+					if (args.has(OPT_GENSIGN)) {
 						RSAPublicKey pubkey = EstEIDManager.generateKey(sc, 1);
 						if (args.has(OPT_CA)) {
 							X509Certificate crt = ca.generateUserCertificate(pubkey, true,  mgr.getProperty("D2"), mgr.getProperty("D1"), mgr.getProperty("D7"), mgr.getProperty("EMAIL"));
@@ -421,16 +422,21 @@ public class CLI {
 						} else {
 							System.out.println(pub2pem(pubkey));
 						}
-					} else if (args.has(OPT_AUTHCERT)) {
+					}
+					if (args.has(OPT_AUTHCERT)) {
 						PEMParser pem = new PEMParser(new InputStreamReader(new FileInputStream((File)args.valueOf(OPT_AUTHCERT))));
 						X509CertificateHolder crt = (X509CertificateHolder) pem.readObject();
 						pem.close();
 						EstEIDManager.loadCertificate(sc, crt.getEncoded(), 0);
-					} else if (args.has(OPT_SIGNCERT)) {
+					}
+					if (args.has(OPT_SIGNCERT)) {
 						PEMParser pem = new PEMParser(new InputStreamReader(new FileInputStream((File)args.valueOf(OPT_SIGNCERT))));
 						X509CertificateHolder crt = (X509CertificateHolder) pem.readObject();
 						pem.close();
 						EstEIDManager.loadCertificate(sc, crt.getEncoded(), 1);
+					}
+					if (args.has(OPT_FINALIZE)) {
+						EstEIDManager.set_personalized(sc);
 					}
 				}
 			} else if (args.has(OPT_CMK) && args.has(OPT_KEY)) {
