@@ -14,6 +14,9 @@ env:
   global:
     secure: Df5FIHnieDJj8AAwgeAh779Rs+aoJ8e9WQN0ero4OfcJ2Y1G7InBZQIGesfVR1M7EX4Hf0fvmUam9zthdwi4culk+gJeOAMM/wpCqvEUyWDTd78Cr08L7PjNW8RCq5NCYhgvO1j+IzJOA3IR6h8DSS4QGZtJqPYk65ZQ1uRyAGc=
 addons:
+  apt:
+    packages:
+      - libc6:i386
   coverity_scan:
     project:
       name: martinpaljak/esteidhacker
