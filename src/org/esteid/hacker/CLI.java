@@ -405,10 +405,22 @@ public class CLI {
 						EstEIDManager.set_personalized(sc);
 					} else if (args.has(OPT_GENAUTH)) {
 						RSAPublicKey pubkey = EstEIDManager.generateKey(sc, 0);
-						System.out.println(pub2pem(pubkey));
+						if (args.has(OPT_CA)) {
+							X509Certificate crt = ca.generateUserCertificate(pubkey, false,  mgr.getProperty("D2"), mgr.getProperty("D1"), mgr.getProperty("D7"), mgr.getProperty("EMAIL"));
+							EstEIDManager.loadCertificate(sc, crt.getEncoded(), 0);
+							System.out.println("Loaded and generated: " + crt.getSubjectDN());
+						} else {
+							System.out.println(pub2pem(pubkey));
+						}
 					} else if (args.has(OPT_GENSIGN)) {
 						RSAPublicKey pubkey = EstEIDManager.generateKey(sc, 1);
-						System.out.println(pub2pem(pubkey));
+						if (args.has(OPT_CA)) {
+							X509Certificate crt = ca.generateUserCertificate(pubkey, true,  mgr.getProperty("D2"), mgr.getProperty("D1"), mgr.getProperty("D7"), mgr.getProperty("EMAIL"));
+							EstEIDManager.loadCertificate(sc, crt.getEncoded(), 1);
+							System.out.println("Loaded and generated: " + crt.getSubjectDN());
+						} else {
+							System.out.println(pub2pem(pubkey));
+						}
 					} else if (args.has(OPT_AUTHCERT)) {
 						PEMParser pem = new PEMParser(new InputStreamReader(new FileInputStream((File)args.valueOf(OPT_AUTHCERT))));
 						X509CertificateHolder crt = (X509CertificateHolder) pem.readObject();

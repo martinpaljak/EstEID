@@ -191,6 +191,10 @@ public class EstEIDManager {
 	}
 
 
+	public String getProperty(String name) {
+		return properties.getProperty(name);
+	}
+
 
 	public static GlobalPlatform open_gp(CardChannel c, Properties p) throws CardException, GPException {
 		byte [] gpkey = HexUtils.hex2bin(p.getProperty("GPKEY"));
