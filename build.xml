@@ -63,15 +63,20 @@
     </jar>
     <copy file="esteid.jar" todir="capsule"/>
     <jar manifest="Manifest.mf" destfile="esteid-app.jar" level="9" basedir="capsule">
-       <fileset dir="lib"><include name="*.jar"/></fileset>
-    </jar>
-  </target>
-  <target name="cmd" depends="compile" description="generate the local commandline utility">
-    <jar manifest="Manifest.mf" destfile="esteid.jar" level="9" basedir="build">
-      <fileset dir="src">
-        <include name="resources/*.pem"/>
+      <fileset dir="lib">
+        <include name="*.jar"/>
       </fileset>
     </jar>
+  </target>
+  <!-- Wrap the JAR into .EXE for Windows users -->
+  <target name="windist" depends="dist" description="package as .exe">
+    <property name="launch4j.dir" location="ext/launch4j"/>
+    <taskdef name="launch4j" classname="net.sf.launch4j.ant.Launch4jTask" classpath="${launch4j.dir}/launch4j.jar:${launch4j.dir}/lib/xstream.jar"/>
+    <launch4j>
+      <config headerType="console" outfile="esteid.exe" jar="esteid-app.jar" errTitle="EstEID hacker">
+        <jre minVersion="1.8.0"/>
+      </config>
+    </launch4j>
   </target>
   <!-- Clean the source tree -->
   <target name="clean" description="clean up">
