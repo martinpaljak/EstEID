@@ -71,7 +71,6 @@ public class CLI {
 	private static final String OPT_VERSION = "version";
 	private static final String OPT_HELP = "help";
 	private static final String OPT_DEBUG = "debug";
-	private static final String OPT_VERBOSE = "verbose";
 	private static final String OPT_INFO = "info";
 
 	private static final String OPT_CA = "ca";
@@ -122,7 +121,6 @@ public class CLI {
 		parser.accepts(OPT_VERSION, "Show information about the program");
 		parser.acceptsAll(Arrays.asList("h", OPT_HELP), "Show this help");
 		parser.acceptsAll(Arrays.asList("d", OPT_DEBUG), "Debug (show APDU-s)");
-		parser.acceptsAll(Arrays.asList("v", OPT_VERBOSE), "Be verbose");
 		parser.acceptsAll(Arrays.asList("i", OPT_INFO), "Show information about the EstEID token");
 		parser.acceptsAll(Arrays.asList("l", OPT_LIST), "List connected tokens");
 
