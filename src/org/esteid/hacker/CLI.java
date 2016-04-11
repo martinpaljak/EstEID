@@ -51,6 +51,7 @@ import apdu4j.HexUtils;
 import apdu4j.LoggingCardTerminal;
 import apdu4j.TerminalManager;
 import javacard.framework.AID;
+import jnasmartcardio.Smartcardio.EstablishContextException;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -528,7 +529,7 @@ public class CLI {
 			if (args.has(OPT_TEST_CRYPTO) || args.has(OPT_TEST)) {
 				esteid.crypto_tests(pin1, pin2);
 			}
-		} catch (CardException e) {
+		} catch (CardException | EstablishContextException e) {
 			if (TerminalManager.getExceptionMessage(e) != null) {
 				System.out.println("PC/SC Error: " + TerminalManager.getExceptionMessage(e));
 			} else {
