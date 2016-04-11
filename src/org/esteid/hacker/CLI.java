@@ -126,11 +126,11 @@ public class CLI {
 
 		// FakeEstEIDManagerCA interface
 		parser.accepts(OPT_CA, "Use or generate a CA").withRequiredArg().ofType(File.class);
-		parser.accepts(OPT_RESIGN, "Re-sign cert (PEM) with CA").withRequiredArg().ofType(File.class);
+		parser.accepts(OPT_RESIGN, "Re-sign cert with CA").withRequiredArg().ofType(File.class);
 
 		// Generate and load keys/certificates
-		parser.accepts(OPT_GENAUTH, "Generate and load auth key + cert from CA");
-		parser.accepts(OPT_GENSIGN, "Generate and load sign key + cert from CA");
+		parser.accepts(OPT_GENAUTH, "Generate auth key (+ cert)");
+		parser.accepts(OPT_GENSIGN, "Generate sign key (+ cert)");
 
 		// Load keys and certificates.
 		parser.accepts(OPT_AUTHCERT, "Load auth cert (PEM)").withRequiredArg().ofType(File.class);
@@ -150,7 +150,7 @@ public class CLI {
 		// Clone a card
 		parser.accepts(OPT_CLONE, "Clone the card");
 
-		parser.accepts(OPT_EMULATE, "Emulate applet intance from JAR inside vJCRE").withRequiredArg().ofType(File.class);
+		parser.accepts(OPT_EMULATE, "Emulate applet from JAR").withRequiredArg().ofType(File.class);
 		parser.accepts(OPT_TEST, "Run EstEID test-suite");
 		parser.accepts(OPT_TEST_CRYPTO, "Run only crypto tests");
 		parser.accepts(OPT_TEST_PINS, "Run only PIN tests");
