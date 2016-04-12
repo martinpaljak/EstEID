@@ -455,6 +455,7 @@ public class CLI {
 				sc.mutualAuthenticate(HexUtils.hex2bin((String)args.valueOf(OPT_KEY)), (Integer)args.valueOf(OPT_CMK));
 				if (args.has(OPT_LOADPINS)) {
 					EstEIDManager.loadPINCodes(sc, pin1, pin2, puk);
+					System.out.println("PIN codes set: PIN1:" + pin1 + " PIN2:" + pin2 + " PUK:" + puk);
 				} else if (args.has(OPT_COUNTERS)) {
 					System.out.println(HexUtils.bin2hex(sc.transmit(new CommandAPDU(HexUtils.hex2bin("00CA040000"))).getBytes()));
 				} else if (args.has(OPT_GENAUTH)) {
