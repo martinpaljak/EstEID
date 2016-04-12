@@ -22,6 +22,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.math.BigInteger;
 import java.security.InvalidKeyException;
@@ -46,11 +47,13 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+import org.bouncycastle.asn1.ASN1GeneralizedTime;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.GeneralNames;
+import org.bouncycastle.asn1.x509.Time;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
@@ -114,10 +117,9 @@ public class FakeEstEIDCA {
 
 		// Load real root certificate
 		X509CertificateHolder real = getRealCert("/resources/sk-root.pem");
+
 		// Use values from real certificate
-		// FIXME: GeneralizedTime instead of UTCTime for root
-		JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(real.getIssuer(), real.getSerialNumber(),
-				real.getNotBefore(), real.getNotAfter(), real.getSubject(), kp.getPublic());
+		JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(real.getIssuer(), real.getSerialNumber(), Time.getInstance(new ASN1GeneralizedTime(real.getNotBefore())), Time.getInstance(new ASN1GeneralizedTime(real.getNotAfter())), real.getSubject(), kp.getPublic());
 
 		@SuppressWarnings("unchecked")
 		List<ASN1ObjectIdentifier> list = real.getExtensionOIDs();
@@ -175,7 +177,7 @@ public class FakeEstEIDCA {
 			builder.copyAndAddExtension(ext.getExtnId(), ext.isCritical(), holder);
 		}
 		// Generate cert. NB! SHA256!
-		ContentSigner sigGen = new JcaContentSignerBuilder("SHA256withRSA").setProvider(BouncyCastleProvider.PROVIDER_NAME).build(esteidKey);
+		ContentSigner sigGen = new JcaContentSignerBuilder(cert.getSigAlgName()).setProvider(BouncyCastleProvider.PROVIDER_NAME).build(esteidKey);
 
 		X509CertificateHolder newcert = builder.build(sigGen);
 		return new JcaX509CertificateConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME).getCertificate(newcert);
@@ -228,7 +230,7 @@ public class FakeEstEIDCA {
 			}
 		}
 
-		// Generate cert NB! SHA256
+		// Generate cert
 		ContentSigner sigGen = new JcaContentSignerBuilder("SHA256withRSA").setProvider(BouncyCastleProvider.PROVIDER_NAME).build(esteidKey);
 
 		X509CertificateHolder cert = builder.build(sigGen);
@@ -237,11 +239,13 @@ public class FakeEstEIDCA {
 
 	public void storeToFile(File f) throws KeyStoreException, NoSuchProviderException, NoSuchAlgorithmException, CertificateException,
 	IOException {
-		KeyStore keystore = KeyStore.getInstance("pkcs12", BouncyCastleProvider.PROVIDER_NAME);
-		keystore.load(null, password);
-		keystore.setKeyEntry(root, rootKey, password, new Certificate[] { rootCert });
-		keystore.setKeyEntry(esteid, esteidKey, password, new Certificate[] { esteidCert });
-		keystore.store(new FileOutputStream(f), password);
+		try (OutputStream out = new FileOutputStream(f)) {
+			KeyStore keystore = KeyStore.getInstance("pkcs12", BouncyCastleProvider.PROVIDER_NAME);
+			keystore.load(null, password);
+			keystore.setKeyEntry(root, rootKey, password, new Certificate[] { rootCert });
+			keystore.setKeyEntry(esteid, esteidKey, password, new Certificate[] { esteidCert });
+			keystore.store(out, password);
+		}
 	}
 
 	public void loadFromFile(File f) throws KeyStoreException, NoSuchProviderException, NoSuchAlgorithmException, CertificateException,
@@ -251,25 +255,6 @@ public class FakeEstEIDCA {
 		rootKey = (RSAPrivateCrtKey) keystore.getKey(root, password);
 		rootCert = (X509Certificate) keystore.getCertificate(root);
 		esteidKey = (RSAPrivateCrtKey) keystore.getKey(esteid, password);
-		rootCert = (X509Certificate) keystore.getCertificate(esteid);
-	}
-
-	public static void main(String[] argv) throws Exception {
-		FakeEstEIDCA ca = new FakeEstEIDCA();
-		ca.generate();
-		System.out.println("Root: " + ca.rootCert.getSubjectX500Principal().toString());
-
-		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-		keyGen.initialize(2048);
-		// Generate keys
-		KeyPair auth = keyGen.generateKeyPair();
-		KeyPair sign = keyGen.generateKeyPair();
-		X509Certificate authcert = ca.generateUserCertificate((RSAPublicKey) auth.getPublic(), false, "MARTIN", "PALJAK", "38207162722", "martin@martinpaljak.net");
-		X509Certificate signcert = ca.generateUserCertificate((RSAPublicKey) sign.getPublic(), true, "MARTIN", "PALJAK", "38207162722", "martin@martinpaljak.net");
-
-		JcaPEMWriter wr = new JcaPEMWriter(new OutputStreamWriter(System.out));
-		wr.writeObject(authcert);
-		wr.writeObject(signcert);
-		wr.close();
+		esteidCert = (X509Certificate) keystore.getCertificate(esteid);
 	}
 }
