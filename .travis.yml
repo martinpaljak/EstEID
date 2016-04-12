@@ -12,7 +12,7 @@ before_script:
 script: ant windist
 env:
   global:
-    secure: Df5FIHnieDJj8AAwgeAh779Rs+aoJ8e9WQN0ero4OfcJ2Y1G7InBZQIGesfVR1M7EX4Hf0fvmUam9zthdwi4culk+gJeOAMM/wpCqvEUyWDTd78Cr08L7PjNW8RCq5NCYhgvO1j+IzJOA3IR6h8DSS4QGZtJqPYk65ZQ1uRyAGc=
+    secure: "Rgic0xIoeZ1qwpxttV12FLMUMMOpu/y2GCGZuYJNgy5iH8Wug8vmL3E2DqN+tfFw/e4TNhEK4OW4jrVtHwFnMJcsyw3rgCim8+tdoSi75tILXQmQv8FTom+RvIhUAnJW6VYm6uRrTC2R6S62d+EvQdZAkffzDYx5QRD6KmMiF0A="
 addons:
   apt:
     packages:
