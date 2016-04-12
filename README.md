@@ -1,4 +1,4 @@
-# EstEID hacker &nbsp; [![Build Status](https://travis-ci.org/martinpaljak/esteidhacker.svg?branch=master)](https://travis-ci.org/martinpaljak/esteidhacker)
+# EstEID hacker &nbsp; [![Build Status](https://travis-ci.org/martinpaljak/esteidhacker.svg?branch=master)](https://travis-ci.org/martinpaljak/esteidhacker) [![Coverity status](https://scan.coverity.com/projects/8551/badge.svg?flat=1)](https://scan.coverity.com/projects/martinpaljak-esteidhacker)
 
 Java ~~utilities~~ source code for everything and anything related to [EstEID](https://esteid.org):
 
