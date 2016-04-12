@@ -75,24 +75,30 @@ Java ~~utilities~~ source code for everything and anything related to [EstEID](h
 ### Personalization
         $ esteid -perso test.conf -install # load the applet
         $ esteid -perso test.conf -data # store personal data file
-        $ esteid -perso test.conf -genauth # generate authentication key
-        $ esteid -perso test.conf -gensign # generate signature key
-        # Now generate certificates from public keys
+        $ esteid -perso test.conf -genauth # generate authentication key ...
+        $ esteid -perso test.conf -genauth -ca fake.ca # or generate key and load a certificate with the fake CA
+        $ esteid -perso test.conf -gensign # generate signature key ...
+        $ esteid -perso test.conf -gensign -ca fake.ca # or generate key and load a certificate with the fake CA
+        # If certificates are generated elsewhere ...
         $ esteid -perso test.conf -authcert auth.pem # load authentication certificate from auth.pem
         $ esteid -perso test.conf -authcert sign.pem # load signature certificate from sign.pem
         $ esteid -perso test.conf -finalize # finalize personalization
-        # Be sure the specify the right CMK!
+        # All of the previous in one run
+        $ esteid -perso test.conf -new -ca fake.ca
+        # Be sure to specify the right CMK!
         $ esteid -cmk 1 -key XX..XX -loadpins -pin1 0090 -pin2 01497 -puk 17258403 # does not require PIN1
         $ esteid -cmk 2 -key XX..XX -genauth -pin1 0090 # generate new authentication key, requires PIN1
         $ esteid -cmk 2 -key XX..XX -gensign -pin1 0090 # generate new signature key, requires PIN1
         $ esteid -cmk 3 -key xx..XX -authcert auth.pem -pin1 0090 # load new authentication signature, requires PIN1
         $ esteid -cmk 3 -key xx..XX -authcert auth.pem -pin1 0090 # load new authentication signature, requires PIN1
+        # Print the CA PEM files for the fake CA
+        $ esteid -ca fake.ca -dump
 
 ## Dependencies
+* [GlobalPlatform](https://github.com/martinpaljak/GlobalPlatform#globalplatform-from-openkms) (LGPL)
+* [apdu4j](https://github.com/martinpaljak/apdu4j) (MIT)
 * [FakeEstEIDApplet](https://github.com/martinpaljak/AppletPlayground/wiki/FakeEstEID) from [AppletPlayground](https://github.com/martinpaljak/AppletPlayground#applet-playground) (MIT)
 * [vJCRE](https://github.com/martinpaljak/vJCRE#import-projavacardvre) (LGPL)
-* [GlobalPlatform](https://github.com/martinpaljak/GlobalPlatform#globalplatform-from-openkms) (LGPL)
-  * includes [jnasmartcardio](https://github.com/martinpaljak/jnasmartcardio) (CC0 / public domain)
 * [BouncyCastle](bouncycastle.org/java.html) JCE provider + PKIX (MIT)
 
 ## License
