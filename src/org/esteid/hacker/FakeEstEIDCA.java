@@ -76,8 +76,9 @@ public class FakeEstEIDCA {
 
 	public FakeEstEIDCA() throws NoSuchAlgorithmException {
 		// Add BouncyCastle if not present
-		if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null)
+		if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
 			Security.insertProviderAt(new BouncyCastleProvider(), 1);
+		}
 	}
 
 	public void generate() throws NoSuchAlgorithmException, InvalidKeyException, IllegalStateException, NoSuchProviderException,
@@ -87,20 +88,25 @@ public class FakeEstEIDCA {
 		keyGen.initialize(2048);
 		// Generate keys
 		KeyPair root = keyGen.generateKeyPair();
+		keyGen.initialize(4096);
 		KeyPair esteid = keyGen.generateKeyPair();
 		rootCert = makeRootCert(root);
 		esteidCert = makeEsteidCert(esteid, root);
-
 		rootKey = (RSAPrivateCrtKey) root.getPrivate();
 		esteidKey = (RSAPrivateCrtKey) esteid.getPrivate();
-		System.out.println("Done.");
 	}
 
+	public X509Certificate getIntermediateCert() {
+		return esteidCert;
+	}
+	public X509Certificate getRootCert() {
+		return rootCert;
+	}
 	private X509CertificateHolder getRealCert(String path) throws IOException {
-		PEMParser pem = new PEMParser(new InputStreamReader(getClass().getResourceAsStream(path)));
-		X509CertificateHolder crt = (X509CertificateHolder) pem.readObject();
-		pem.close();
-		return crt;
+		try (PEMParser pem = new PEMParser(new InputStreamReader(getClass().getResourceAsStream(path)))) {
+			X509CertificateHolder crt = (X509CertificateHolder) pem.readObject();
+			return crt;
+		}
 	}
 
 	private X509Certificate makeRootCert(KeyPair kp) throws InvalidKeyException, IllegalStateException, NoSuchProviderException,
@@ -109,7 +115,7 @@ public class FakeEstEIDCA {
 		// Load real root certificate
 		X509CertificateHolder real = getRealCert("/resources/sk-root.pem");
 		// Use values from real certificate
-		// TODO/FIXME: GeneralizedTime instead of UTCTime for root
+		// FIXME: GeneralizedTime instead of UTCTime for root
 		JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(real.getIssuer(), real.getSerialNumber(),
 				real.getNotBefore(), real.getNotAfter(), real.getSubject(), kp.getPublic());
 
@@ -127,7 +133,6 @@ public class FakeEstEIDCA {
 
 		X509CertificateHolder cert = builder.build(sigGen);
 		return new JcaX509CertificateConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME).getCertificate(cert);
-
 	}
 
 	private X509Certificate makeEsteidCert(KeyPair esteid, KeyPair root) throws InvalidKeyException, IllegalStateException,
@@ -151,11 +156,10 @@ public class FakeEstEIDCA {
 		}
 
 		// Generate cert
-		ContentSigner sigGen = new JcaContentSignerBuilder("SHA1withRSA").setProvider(BouncyCastleProvider.PROVIDER_NAME).build(root.getPrivate());
+		ContentSigner sigGen = new JcaContentSignerBuilder("SHA384withRSA").setProvider(BouncyCastleProvider.PROVIDER_NAME).build(root.getPrivate());
 
 		X509CertificateHolder cert = builder.build(sigGen);
 		return new JcaX509CertificateConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME).getCertificate(cert);
-
 	}
 
 	public X509Certificate cloneUserCertificate(RSAPublicKey pubkey, X509Certificate cert) throws OperatorCreationException, CertificateException, IOException {
@@ -179,7 +183,7 @@ public class FakeEstEIDCA {
 	}
 	public X509Certificate generateUserCertificate(RSAPublicKey pubkey, boolean signature, String firstname, String lastname,
 			String idcode, String email) throws InvalidKeyException, ParseException, IOException, IllegalStateException,
-			NoSuchProviderException, NoSuchAlgorithmException, SignatureException, CertificateException, OperatorCreationException {
+	NoSuchProviderException, NoSuchAlgorithmException, SignatureException, CertificateException, OperatorCreationException {
 		Date startDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse("2016-01-01");
 		Date endDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse("2016-12-31");
 

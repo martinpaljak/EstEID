@@ -26,6 +26,7 @@ import java.io.OutputStreamWriter;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.Charset;
+import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
@@ -74,6 +75,8 @@ public class CLI {
 	private static final String OPT_INFO = "info";
 
 	private static final String OPT_CA = "ca";
+	private static final String OPT_DUMP = "dump";
+
 	private static final String OPT_RESIGN = "resign";
 	private static final String OPT_GENAUTH = "genauth";
 	private static final String OPT_GENSIGN = "gensign";
@@ -126,6 +129,8 @@ public class CLI {
 
 		// FakeEstEIDManagerCA interface
 		parser.accepts(OPT_CA, "Use or generate a CA").withRequiredArg().ofType(File.class);
+		parser.accepts(OPT_DUMP, "Dump CA keys");
+
 		parser.accepts(OPT_RESIGN, "Re-sign cert with CA").withRequiredArg().ofType(File.class);
 
 		// Generate and load keys/certificates
@@ -228,6 +233,10 @@ public class CLI {
 				ca.storeToFile(f);
 			} else {
 				ca.loadFromFile(f);
+			}
+			if (args.has(OPT_DUMP)) {
+				System.out.println(crt2pem(ca.getRootCert()));
+				System.out.println(crt2pem(ca.getIntermediateCert()));
 			}
 		} else if (args.has(OPT_EMULATE)) {
 			ca.generate();
@@ -561,4 +570,8 @@ public class CLI {
 	static String pub2pem(RSAPublicKey p) {
 		return "-----BEGIN PUBLIC KEY-----\n" + Base64.getMimeEncoder().encodeToString(p.getEncoded()) + "\n-----END PUBLIC KEY-----";
 	}
+	static String crt2pem(X509Certificate c) throws CertificateEncodingException {
+		return "-----BEGIN CERTIFICATE-----\n" + Base64.getMimeEncoder().encodeToString(c.getEncoded()) + "\n-----END CERTIFICATE-----";
+	}
+
 }
