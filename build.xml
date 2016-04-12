@@ -61,11 +61,12 @@
         <include name="resources/*.pem"/>
       </fileset>
     </jar>
-    <copy file="esteid.jar" todir="capsule"/>
-    <jar manifest="Manifest.mf" destfile="esteid-app.jar" level="9" basedir="capsule">
+    <jar manifest="Manifest.mf" destfile="esteid-app.jar" level="9">
       <fileset dir="lib">
         <include name="*.jar"/>
       </fileset>
+      <fileset file="esteid.jar"/>
+      <fileset file="capsule/Capsule.class"/>
     </jar>
   </target>
   <!-- Wrap the JAR into .EXE for Windows users -->
