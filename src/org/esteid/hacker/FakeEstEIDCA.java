@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -250,11 +251,13 @@ public class FakeEstEIDCA {
 
 	public void loadFromFile(File f) throws KeyStoreException, NoSuchProviderException, NoSuchAlgorithmException, CertificateException,
 	IOException, UnrecoverableKeyException {
-		KeyStore keystore = KeyStore.getInstance("pkcs12", BouncyCastleProvider.PROVIDER_NAME);
-		keystore.load(new FileInputStream(f), password);
-		rootKey = (RSAPrivateCrtKey) keystore.getKey(root, password);
-		rootCert = (X509Certificate) keystore.getCertificate(root);
-		esteidKey = (RSAPrivateCrtKey) keystore.getKey(esteid, password);
-		esteidCert = (X509Certificate) keystore.getCertificate(esteid);
+		try (InputStream in = new FileInputStream(f)) {
+			KeyStore keystore = KeyStore.getInstance("pkcs12", BouncyCastleProvider.PROVIDER_NAME);
+			keystore.load(in, password);
+			rootKey = (RSAPrivateCrtKey) keystore.getKey(root, password);
+			rootCert = (X509Certificate) keystore.getCertificate(root);
+			esteidKey = (RSAPrivateCrtKey) keystore.getKey(esteid, password);
+			esteidCert = (X509Certificate) keystore.getCertificate(esteid);
+		}
 	}
 }

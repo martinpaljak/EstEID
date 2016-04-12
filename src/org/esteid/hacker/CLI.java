@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -368,7 +369,10 @@ public class CLI {
 
 			if (args.has(OPT_PERSO)) {
 				// Personalization
-				EstEIDManager mgr = EstEIDManager.getPersoManager(new FileInputStream((File)args.valueOf(OPT_PERSO)), card.getBasicChannel());
+				final EstEIDManager mgr;
+				try (InputStream conf = new FileInputStream((File)args.valueOf(OPT_PERSO))) {
+					mgr = EstEIDManager.getPersoManager(conf, card.getBasicChannel());
+				}
 				if (args.has(OPT_NEW)) {
 					// install applet
 					GlobalPlatform gp = mgr.openGlobalPlatform();
@@ -514,6 +518,10 @@ public class CLI {
 						String value = new String(resp.getData(), Charset.forName("ISO8859-15"));
 						System.out.println("Enter new value (for " +  pd.name() + "): " + value);
 						String input = System.console().readLine();
+						if (input == null) {
+							System.err.println("Exiting ...");
+							System.exit(1);
+						}
 						cmd = new CommandAPDU(0x80, 0x04, pd.getRec(), 0x00, input.getBytes("ISO8859-15"));
 						esteid.transmit(cmd);
 					}
