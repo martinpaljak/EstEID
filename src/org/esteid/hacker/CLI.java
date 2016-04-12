@@ -22,7 +22,6 @@ import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.Charset;
@@ -46,7 +45,6 @@ import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMParser;
-import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 
 import apdu4j.HexUtils;
 import apdu4j.LoggingCardTerminal;
@@ -263,11 +261,8 @@ public class CLI {
 			pem.close();
 
 			X509Certificate newcert = ca.cloneUserCertificate((RSAPublicKey) crt.getPublicKey(), crt);
-			JcaPEMWriter wr = new JcaPEMWriter(new OutputStreamWriter(System.out));
-			wr.writeObject(newcert);
-			wr.close();
+			System.out.println(crt2pem(newcert));
 		}
-
 
 		Card card = null;
 		CardTerminal term;
