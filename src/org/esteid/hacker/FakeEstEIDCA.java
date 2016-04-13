@@ -185,11 +185,18 @@ public class FakeEstEIDCA {
 
 	}
 	public X509Certificate generateUserCertificate(RSAPublicKey pubkey, boolean signature, String firstname, String lastname,
-			String idcode, String email) throws InvalidKeyException, ParseException, IOException, IllegalStateException,
+			String idcode, String email, Date from, Date to) throws InvalidKeyException, ParseException, IOException, IllegalStateException,
 	NoSuchProviderException, NoSuchAlgorithmException, SignatureException, CertificateException, OperatorCreationException {
+
 		Date startDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse("2016-01-01");
 		Date endDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse("2016-12-31");
 
+		if (from != null) {
+			startDate = from;
+		}
+		if (to != null) {
+			endDate = to;
+		}
 		String template = "C=EE,O=ESTEID,OU=%s,CN=%s\\,%s\\,%s,SURNAME=%s,GIVENNAME=%s,SERIALNUMBER=%s";
 		// Normalize.
 		lastname = lastname.toUpperCase();

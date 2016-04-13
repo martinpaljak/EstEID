@@ -26,12 +26,21 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.Charset;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.SignatureException;
 import java.security.cert.CertificateEncodingException;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import javax.smartcardio.Card;
@@ -46,6 +55,7 @@ import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.operator.OperatorCreationException;
 
 import apdu4j.HexUtils;
 import apdu4j.LoggingCardTerminal;
@@ -386,8 +396,8 @@ public class CLI {
 					RSAPublicKey k2 = EstEIDManager.generateKey(sc, 1);
 
 					// Generate fake certificates
-					X509Certificate c1 = ca.generateUserCertificate(k1, false, mgr.getProperty("D2"), mgr.getProperty("D1"), mgr.getProperty("D7"), mgr.getProperty("EMAIL"));
-					X509Certificate c2 = ca.generateUserCertificate(k2, true, mgr.getProperty("D2"), mgr.getProperty("D1"), mgr.getProperty("D7"), mgr.getProperty("EMAIL"));
+					X509Certificate c1 = cert_from_props(ca, mgr, k1, false);
+					X509Certificate c2 = cert_from_props(ca, mgr, k2, false);
 
 					// Load certificates
 					EstEIDManager.loadCertificate(sc, c1, 0);
@@ -411,7 +421,7 @@ public class CLI {
 					if (args.has(OPT_GENAUTH)) {
 						RSAPublicKey pubkey = EstEIDManager.generateKey(sc, 0);
 						if (args.has(OPT_CA)) {
-							X509Certificate crt = ca.generateUserCertificate(pubkey, false,  mgr.getProperty("D2"), mgr.getProperty("D1"), mgr.getProperty("D7"), mgr.getProperty("EMAIL"));
+							X509Certificate crt = cert_from_props(ca, mgr, pubkey, false);
 							EstEIDManager.loadCertificate(sc, crt.getEncoded(), 0);
 							System.out.println("Loaded and generated: " + crt.getSubjectDN());
 						} else {
@@ -422,7 +432,7 @@ public class CLI {
 					if (args.has(OPT_GENSIGN)) {
 						RSAPublicKey pubkey = EstEIDManager.generateKey(sc, 1);
 						if (args.has(OPT_CA)) {
-							X509Certificate crt = ca.generateUserCertificate(pubkey, true,  mgr.getProperty("D2"), mgr.getProperty("D1"), mgr.getProperty("D7"), mgr.getProperty("EMAIL"));
+							X509Certificate crt = cert_from_props(ca, mgr, pubkey, true);
 							EstEIDManager.loadCertificate(sc, crt.getEncoded(), 1);
 							System.out.println("Loaded and generated: " + crt.getSubjectDN());
 						} else {
@@ -576,6 +586,20 @@ public class CLI {
 	}
 	static String crt2pem(X509Certificate c) throws CertificateEncodingException {
 		return "-----BEGIN CERTIFICATE-----\n" + Base64.getMimeEncoder().encodeToString(c.getEncoded()) + "\n-----END CERTIFICATE-----";
+	}
+
+	static X509Certificate cert_from_props(FakeEstEIDCA ca, EstEIDManager mgr, RSAPublicKey k, boolean type) {
+		try {
+			String first = mgr.getProperty("D2");
+			String last = mgr.getProperty("D1");
+			String email = mgr.getProperty("EMAIL");
+			String idcode = mgr.getProperty("D7");
+			Date fromdate = new SimpleDateFormat("dd.MM.yyyy", Locale.ENGLISH).parse(mgr.getProperty("D11"));
+			Date todate = new SimpleDateFormat("dd.MM.yyyy", Locale.ENGLISH).parse(mgr.getProperty("D9"));
+			return ca.generateUserCertificate(k, type, first, last, idcode, email, fromdate, todate);
+		} catch (Exception e) {
+			throw new RuntimeException("Could not generate certificate", e);
+		}
 	}
 
 }
