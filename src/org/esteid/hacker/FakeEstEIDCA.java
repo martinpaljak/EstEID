@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
@@ -50,6 +49,7 @@ import java.util.Locale;
 
 import org.bouncycastle.asn1.ASN1GeneralizedTime;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.ASN1UTCTime;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.asn1.x509.GeneralName;
@@ -60,10 +60,10 @@ import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMParser;
-import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+
 
 public class FakeEstEIDCA {
 
@@ -146,7 +146,7 @@ public class FakeEstEIDCA {
 		X509CertificateHolder real = getRealCert("/resources/sk-esteid.pem");
 
 		JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(real.getIssuer(), real.getSerialNumber(),
-				real.getNotBefore(), real.getNotAfter(), real.getSubject(), esteid.getPublic());
+				Time.getInstance(new ASN1UTCTime(real.getNotBefore())), Time.getInstance(new ASN1GeneralizedTime(real.getNotAfter())), real.getSubject(), esteid.getPublic());
 
 		// Basic constraints
 		@SuppressWarnings("unchecked")
