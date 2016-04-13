@@ -73,18 +73,18 @@ Java ~~utilities~~ source code for everything and anything related to [EstEID](h
 
 
 ### Personalization
-        $ esteid -perso test.conf -install # load the applet
-        $ esteid -perso test.conf -data # store personal data file
-        $ esteid -perso test.conf -genauth # generate authentication key ...
-        $ esteid -perso test.conf -genauth -ca fake.ca # or generate key and load a certificate with the fake CA
-        $ esteid -perso test.conf -gensign # generate signature key ...
-        $ esteid -perso test.conf -gensign -ca fake.ca # or generate key and load a certificate with the fake CA
+        $ esteid -perso testcard.conf -install # load the applet
+        $ esteid -perso testcard.conf -data # store personal data file
+        $ esteid -perso testcard.conf -genauth # generate authentication key ...
+        $ esteid -perso testcard.conf -genauth -ca fake.ca # or generate key and load a certificate with the fake CA
+        $ esteid -perso testcard.conf -gensign # generate signature key ...
+        $ esteid -perso testcard.conf -gensign -ca fake.ca # or generate key and load a certificate with the fake CA
         # If certificates are generated elsewhere ...
-        $ esteid -perso test.conf -authcert auth.pem # load authentication certificate from auth.pem
-        $ esteid -perso test.conf -authcert sign.pem # load signature certificate from sign.pem
-        $ esteid -perso test.conf -finalize # finalize personalization
+        $ esteid -perso testcard.conf -authcert auth.pem # load authentication certificate from auth.pem
+        $ esteid -perso testcard.conf -authcert sign.pem # load signature certificate from sign.pem
+        $ esteid -perso testcard.conf -finalize # finalize personalization
         # All of the previous in one run
-        $ esteid -perso test.conf -new -ca fake.ca
+        $ esteid -perso testcard.conf -new -ca fake.ca
         # Be sure to specify the right CMK!
         $ esteid -cmk 1 -key XX..XX -loadpins -pin1 0090 -pin2 01497 -puk 17258403 # does not require PIN1
         $ esteid -cmk 2 -key XX..XX -genauth -pin1 0090 # generate new authentication key, requires PIN1
