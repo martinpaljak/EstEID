@@ -12,6 +12,7 @@
     <get src="https://github.com/martinpaljak/apdu4j/releases/download/v0.0.35/apdu4j-pcsc.jar" dest="lib" verbose="true" skipexisting="true"/>
     <get src="https://github.com/martinpaljak/GlobalPlatformPro/releases/download/v0.3.7/openkms-gp.jar" dest="lib" verbose="true" skipexisting="true"/>
     <get src="https://github.com/martinpaljak/vJCRE/releases/download/r1/vjcre.jar" dest="lib" verbose="true" skipexisting="true"/>
+    <get src="https://github.com/puniverse/capsule/releases/download/v1.0.2/capsule-1.0.2.jar" dest="ext" verbose="true" skipexisting="true"/>
     <checksum algorithm="SHA-256" file="lib/jopt-simple-4.9.jar" property="26c5856e954b5f864db76f13b86919b59c6eecf9fd930b96baa8884626baf2f5" verifyProperty="joptOK"/>
     <checksum algorithm="SHA-256" file="lib/slf4j-api-1.7.13.jar" property="20d68d0c2e4fb984ffc164852b8b68df49a2b8716076f576881bcef7649a0e35" verifyProperty="slfjapiOK"/>
     <checksum algorithm="SHA-256" file="lib/slf4j-simple-1.7.13.jar" property="4709c0b535057c6a9a794da9522b1291de9c72b6d61f41b7ecf63156bc7bee35" verifyProperty="slfjsimpleOK"/>
@@ -20,6 +21,7 @@
     <checksum algorithm="SHA-256" file="lib/apdu4j-pcsc.jar" property="c5106420a1bada8db7f3870eefd3d9bd860d9d230537c233cd714f99d41469e5" verifyProperty="apduOK"/>
     <checksum algorithm="SHA-256" file="lib/openkms-gp.jar" property="79a76d13b4478b9769e3f81052061a2edbda3fb3a6e527f6c6be11159a327820" verifyProperty="gpOK"/>
     <checksum algorithm="SHA-256" file="lib/vjcre.jar" property="20260d4c63d54eba540eb6eee931b9bff9df0ad97823841848126ea36c04e6b4" verifyProperty="vjcreOK"/>
+    <checksum algorithm="SHA-256" file="ext/capsule-1.0.2.jar" property="33f52912cb741becb611e6f116cdfe4c144d21b665c0504f40111c5cc3bede1c" verifyProperty="capsuleOK"/>
     <fail message="Checksum failure">
       <condition>
         <or>
@@ -31,6 +33,7 @@
           <isfalse value="${apduOK}"/>
           <isfalse value="${gpOK}"/>
           <isfalse value="${vjcreOK}"/>
+          <isfalse value="${capsuleOK}"/>
         </or>
       </condition>
     </fail>
@@ -66,7 +69,7 @@
         <include name="*.jar"/>
       </fileset>
       <fileset file="esteid.jar"/>
-      <fileset file="capsule/Capsule.class"/>
+      <zipfileset src="ext/capsule-1.0.2.jar" includes="Capsule.class"/>
     </jar>
   </target>
   <!-- Wrap the JAR into .EXE for Windows users -->
