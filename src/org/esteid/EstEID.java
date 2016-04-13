@@ -209,7 +209,7 @@ public final class EstEID {
 
 	public static EstEID start(CardChannel c) throws CardException {
 		// FIXME: Try to select AID first
-		ResponseAPDU resp = c.transmit(select_apdu(FID_3F00));
+		ResponseAPDU resp = c.transmit(select_apdu(FID_3F00, false));
 		if (resp.getSW() == 0x6A83 || resp.getSW() == 0x6D00) {
 			EstEIDException.check(resp, "Locked up Digi-ID detected, must reset card before use");
 		}
@@ -336,22 +336,23 @@ public final class EstEID {
 		return new String(read_record(d.getRec()), "ISO-8859-15").trim();
 	}
 
-	public static CommandAPDU select_apdu(int fid) {
+	public static CommandAPDU select_apdu(int fid, boolean fci) {
+		int p2 = fci ? 0x04 : 0x0C;
 		byte [] fidbytes = new byte[2];
 		fidbytes[0] = (byte)(fid >> 8);
 		fidbytes[1] = (byte)(fid);
 
 		if (fid == FID_3F00) { // Select master file
-			return new CommandAPDU(0x00, INS_SELECT, 0x00, 0x0C);
+			return new CommandAPDU(0x00, INS_SELECT, 0x00, p2);
 		} else if (fid == FID_EEEE) { // Select DF
-			return new CommandAPDU(0x00, INS_SELECT, 0x01, 0x0C, fidbytes);
+			return new CommandAPDU(0x00, INS_SELECT, 0x01, p2, fidbytes);
 		} else { // Select EF
-			return new CommandAPDU(0x00, INS_SELECT, 0x02, 0x0C, fidbytes);
+			return new CommandAPDU(0x00, INS_SELECT, 0x02, p2, fidbytes);
 		}
 	}
 	// File handling. Returns FCI, if any
 	public byte[] select(int fid) throws CardException {
-		ResponseAPDU resp = check(transmit(select_apdu(fid)));
+		ResponseAPDU resp = check(transmit(select_apdu(fid, true)));
 		currentFID = fid;
 		return resp.getData();
 	}
@@ -385,8 +386,13 @@ public final class EstEID {
 	public byte[] read_certificate_bytes(int fid) throws CardException {
 		select(FID_3F00);
 		select(FID_EEEE);
-		select(fid);
-		return read_file(0x800);
+		byte[] fci = select(fid);
+		// Get file size from FCI. XXX: hardcoded location
+		int size = 0x600;
+		if (fci.length >= 13) {
+			size = ((fci[11] & 0xFF) << 8) | (fci[12] & 0xFF);
+		}
+		return read_file(size);
 	}
 	private X509Certificate readCertificate(int fid) throws CardException {
 		try {
@@ -403,6 +409,16 @@ public final class EstEID {
 
 	public X509Certificate readSignCert() throws EstEIDException, CardException {
 		return readCertificate(FID_DDCE);
+	}
+	public String getAppVersion() throws CardException {
+		byte [] v = transmit(new CommandAPDU(0x00, 0xCA, 0x01, 0x00, 0x03)).getData();
+		if (v.length == 2) {
+			return String.format("%d.%d", v[0], v[1]);
+		} else if (v.length == 3) {
+			return String.format("%d.%d.%d", v[0], v[1], v[2]);
+		} else {
+			throw new RuntimeException("Invalid length for EstEID app version: " + v.length);
+		}
 	}
 
 	// Crypto operations

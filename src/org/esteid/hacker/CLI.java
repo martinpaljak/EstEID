@@ -557,6 +557,9 @@ public class CLI {
 				}
 			}
 
+			if (args.has(OPT_TEST) || args.has(OPT_TEST_PINS) || args.has(OPT_TEST_CRYPTO)) {
+				System.out.println("EstEID app: " + esteid.getAppVersion());
+			}
 			if (args.has(OPT_TEST_PINS) || args.has(OPT_TEST)) {
 				if (args.has(OPT_PIN1) ^ args.has(OPT_PIN2) || args.has(OPT_PIN2) ^ args.has(OPT_PUK)) {
 					System.out.println("Need any or all of PIN options if testing for PINS");
