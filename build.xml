@@ -3,6 +3,7 @@
   <description>ANT build file for EstEID hacking</description>
   <target name="fetch" description="fetch the dependencies">
     <mkdir dir="lib"/>
+    <mkdir dir="ext"/>
     <!-- Remember to update .classpath as well! -->
     <get src="https://repo1.maven.org/maven2/net/sf/jopt-simple/jopt-simple/4.9/jopt-simple-4.9.jar" dest="lib" verbose="true" skipexisting="true"/>
     <get src="http://repo2.maven.org/maven2/org/slf4j/slf4j-api/1.7.13/slf4j-api-1.7.13.jar" dest="lib" verbose="true" skipexisting="true"/>
