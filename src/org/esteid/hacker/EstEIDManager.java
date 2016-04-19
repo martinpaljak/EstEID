@@ -32,10 +32,10 @@ import org.slf4j.LoggerFactory;
 
 import apdu4j.HexUtils;
 import pro.javacard.gp.CapFile;
-import pro.javacard.gp.GPCrypto;
-import pro.javacard.gp.GPData;
 import pro.javacard.gp.GPException;
 import pro.javacard.gp.GPKeySet.GPKey;
+import pro.javacard.gp.GPRegistryEntry.Privilege;
+import pro.javacard.gp.GPRegistryEntry.Privileges;
 import pro.javacard.gp.GPUtils;
 import pro.javacard.gp.GlobalPlatform;
 import pro.javacard.gp.GlobalPlatform.APDUMode;
@@ -63,7 +63,7 @@ public class EstEIDManager {
 		return mgr;
 	}
 
-	public static RSAPublicKey generateKey(SecureChannel c, int key) throws CardException, SecureChannelException {
+	public static RSAPublicKey generateKey(SecureChannel c, int key) throws CardException, SecureChannelException, EstEIDException {
 		CommandAPDU cmd = new CommandAPDU(0x8C, 0x06, 0x01, key);
 		ResponseAPDU r = c.transmit(cmd);
 		EstEIDException.check(r);
@@ -77,7 +77,7 @@ public class EstEIDManager {
 		}
 	}
 
-	public static void loadCertificate(SecureChannel sc, X509Certificate c, int key) throws CardException, SecureChannelException {
+	public static void loadCertificate(SecureChannel sc, X509Certificate c, int key) throws CardException, SecureChannelException, EstEIDException {
 		try {
 			loadCertificate(sc, c.getEncoded(), key);
 		} catch (CertificateEncodingException e) {
@@ -85,7 +85,7 @@ public class EstEIDManager {
 		}
 	}
 
-	public static void loadCertificate(SecureChannel sc, byte[] c, int key) throws CardException, SecureChannelException {
+	public static void loadCertificate(SecureChannel sc, byte[] c, int key) throws CardException, SecureChannelException, EstEIDException {
 		// Add 0x80 tailing marker
 		byte[] cert = GPUtils.concatenate(c, new byte[]{(byte) 0x80});
 		logger.trace("Storing certificate: {} ", HexUtils.bin2hex(cert) );
@@ -99,7 +99,7 @@ public class EstEIDManager {
 
 
 
-	static void write_perso_file(SecureChannel sc, Properties p) throws CardException, SecureChannelException, UnsupportedEncodingException{
+	static void write_perso_file(SecureChannel sc, Properties p) throws CardException, SecureChannelException, UnsupportedEncodingException, EstEIDException{
 		for(int i = 1; i <= 16; ++i) {
 			logger.trace("Writing personal data file record {}", i);
 			String record = p.getProperty("D" + i);
@@ -107,23 +107,16 @@ public class EstEIDManager {
 				continue;
 			byte [] data = record.getBytes("Windows-1252");
 			ResponseAPDU r = sc.transmit(new CommandAPDU(0x00, 0x03, i, 0x00, data));
-			check(r, "Could not store personal data file record " + i);
+			EstEIDException.check(r, "Could not store personal data file record " + i);
 		}
 	}
 
-	void writePersoFile(SecureChannel sc) throws UnsupportedEncodingException, CardException, SecureChannelException {
+	void writePersoFile(SecureChannel sc) throws UnsupportedEncodingException, CardException, SecureChannelException, EstEIDException {
 		write_perso_file(sc, properties);
 	}
 	static ResponseAPDU set_personalized(SecureChannel sc) throws CardException, SecureChannelException {
 		logger.debug("Setting applet to personalized state");
 		return sc.transmit(new CommandAPDU(0x00, 0x04, 0x00, 0x00));
-	}
-
-	static ResponseAPDU check(ResponseAPDU r, String... args) throws EstEIDException {
-		if (r.getSW() != 0x9000) {
-			throw new EstEID.EstEIDException("Kaboom");
-		}
-		return r;
 	}
 
 	public static RSAPublicKeySpec buf2pub(byte[]buf)  {
@@ -200,7 +193,7 @@ public class EstEIDManager {
 		byte [] gpkey = HexUtils.hex2bin(p.getProperty("GPKEY"));
 		// Open GlobalPlatform
 		GlobalPlatform gp = new GlobalPlatform(c);
-		gp.select();
+		gp.select(null);
 		SessionKeyProvider kp = PlaintextKeys.fromMasterKey(new GPKey(gpkey, GPKey.Type.DES3));
 		gp.openSecureChannel(kp, null, 0, EnumSet.of(APDUMode.ENC));
 		return gp;
@@ -248,10 +241,13 @@ public class EstEIDManager {
 
 		byte [] instparams = installation_parameters(cmk_perso, cmk_pin, cmk_key, cmk_cert, pin1, pin2, puk);
 
-		gp.installAndMakeSelectable(cap.getPackageAID(), cap.getAppletAIDs().get(0), null, (byte) (GPData.cardLockPriv | GPData.defaultSelectedPriv), instparams, null);
+		Privileges privs = new Privileges();
+		privs.add(Privilege.CardReset);
+
+		gp.installAndMakeSelectable(cap.getPackageAID(), cap.getAppletAIDs().get(0), null, privs, instparams, null);
 
 		// Select installed applet
-		gp.getChannel().transmit(select_aid_apdu(HexUtils.hex2bin("D23300000045737445494420763335")));
+		gp.getChannel().transmit(select_aid_apdu(cap.getAppletAIDs().get(0).getBytes()));
 	}
 
 	public static byte[] installation_parameters(byte[] cmk_perso, byte[] cmk_pin, byte[] cmk_key, byte[] cmk_cert, byte[] pin1, byte [] pin2, byte [] puk) {
@@ -285,7 +281,7 @@ public class EstEIDManager {
 		}
 	}
 
-	public static void loadPINCodes(SecureChannel sc, String pin1, String pin2, String puk) throws CardException, SecureChannelException {
+	public static void loadPINCodes(SecureChannel sc, String pin1, String pin2, String puk) throws CardException, SecureChannelException, EstEIDException {
 		CommandAPDU replace = new CommandAPDU(0x00, 0x05, 0x00, 0x00, GPUtils.concatenate(pin1.getBytes(), pin2.getBytes(), puk.getBytes()));
 		EstEIDException.check(sc.transmit(replace), "Could not replace PIN codes");
 	}

@@ -77,8 +77,6 @@ public final class EstEID {
 	public final static int P1_PSO_DECRYPT = 0x80;
 	public final static int P2_PSO_DECRYPT = 0x86;
 
-
-
 	// File identifiers
 	public final static int FID_3F00 = 0x3F00;
 	public final static int FID_0013 = 0x0013;
@@ -89,7 +87,7 @@ public final class EstEID {
 	public final static int FID_DDCE = 0xDDCE;
 	public final static int FID_0033 = 0x0033;
 
-	// Peronal data file records
+	// Personal data file records
 	public enum PersonalData {
 		SURNAME(1),
 		GIVEN_NAMES1(2),
@@ -207,7 +205,7 @@ public final class EstEID {
 		return new EstEID(c);
 	}
 
-	public static EstEID start(CardChannel c) throws CardException {
+	public static EstEID start(CardChannel c) throws CardException, EstEIDException {
 		// FIXME: Try to select AID first
 		ResponseAPDU resp = c.transmit(select_apdu(FID_3F00, false));
 		if (resp.getSW() == 0x6A83 || resp.getSW() == 0x6D00) {
@@ -263,60 +261,50 @@ public final class EstEID {
 	public static CommandAPDU verify_apdu(PIN pin, String value) {
 		return new CommandAPDU(0x00, INS_VERIFY, 0x00, pin.getRef(), value.getBytes());
 	}
-	public ResponseAPDU verify_cmd(PIN pin, String value) throws CardException {
+	public ResponseAPDU verify_cmd(PIN pin, String value) throws CardException, WrongPINException, EstEIDException {
 		if (value.length() < pin.min || value.length() > pin.max)
 			throw new IllegalArgumentException("PIN has incorrect length: " + value.length());
-		return check(transmit(verify_apdu(pin, value)));
-	}
-	public void verify(PIN pin, String value) throws WrongPINException, CardException {
-		try {
-			verify_cmd(pin, value);
-		} catch (EstEIDException e) {
-			WrongPINException.check(e.sw);
-		}
+		ResponseAPDU r = transmit(verify_apdu(pin, value));
+		WrongPINException.check(r);
+		return EstEIDException.check(r);
 	}
 
-	public void change(PIN pin, String oldpin, String newpin) throws WrongPINException, CardException {
-		try {
-			change(pin, oldpin.getBytes(), newpin.getBytes());
-		} catch (EstEIDException e) {
-			WrongPINException.check(e.sw);
-		}
+	public void verify(PIN pin, String value) throws WrongPINException, CardException, EstEIDException {
+		verify_cmd(pin, value);
 	}
 
-	public void unblock(PIN pin) throws WrongPINException, CardException {
-		try {
-			unblock_apdu(pin, null);
-		} catch (EstEIDException e) {
-			WrongPINException.check(e.sw);
-		}
-	}
-	public void unblock(PIN pin, String newpin) throws WrongPINException, CardException {
-		try {
-			unblock_apdu(pin, newpin.getBytes());
-		} catch (EstEIDException e) {
-			WrongPINException.check(e.sw);
-		}
+	public void change(PIN pin, String oldpin, String newpin) throws WrongPINException, CardException, EstEIDException {
+		ResponseAPDU r = change_apdu(pin, oldpin.getBytes(), newpin.getBytes());
+		WrongPINException.check(r);
+		EstEIDException.check(r);
 	}
 
+	public void unblock(PIN pin) throws WrongPINException, CardException, EstEIDException {
 
+		unblock(pin, null);
+	}
+	public void unblock(PIN pin, String newpin) throws WrongPINException, CardException, EstEIDException {
+		ResponseAPDU r = unblock_apdu(pin, newpin.getBytes());
+		WrongPINException.check(r);
+		EstEIDException.check(r);
+	}
 
-	public ResponseAPDU change(PIN pin, byte[] oldpin, byte[] newpin) throws CardException {
+	public ResponseAPDU change_apdu(PIN pin, byte[] oldpin, byte[] newpin) throws CardException {
 		byte [] v = new byte[oldpin.length + newpin.length];
 		System.arraycopy(oldpin, 0, v, 0, oldpin.length);
 		System.arraycopy(newpin, 0, v, oldpin.length, newpin.length);
-		return check(transmit(new CommandAPDU(0x00, INS_CHANGE_REFERENCE_DATA, 0x00, pin.getRef(), v)));
+		return transmit(new CommandAPDU(0x00, INS_CHANGE_REFERENCE_DATA, 0x00, pin.getRef(), v));
 	}
 
 	public ResponseAPDU unblock_apdu(PIN pin, byte[] newpin) throws CardException {
 		if (newpin == null) {
-			return check(transmit(new CommandAPDU(0x00, INS_RESET_RETRY_COUNTER, 0x03, pin.getRef())));
+			return transmit(new CommandAPDU(0x00, INS_RESET_RETRY_COUNTER, 0x03, pin.getRef()));
 		} else {
-			return check(transmit(new CommandAPDU(0x00, INS_RESET_RETRY_COUNTER, 0x00, pin.getRef(), newpin)));
+			return transmit(new CommandAPDU(0x00, INS_RESET_RETRY_COUNTER, 0x00, pin.getRef(), newpin));
 		}
 	}
 
-	public Map<PIN, Byte> getPINCounters() throws CardException {
+	public Map<PIN, Byte> getPINCounters() throws CardException, EstEIDException {
 		select(FID_3F00);
 		select(FID_0016);
 		HashMap<PIN, Byte> m = new HashMap<PIN, Byte>();
@@ -327,13 +315,17 @@ public final class EstEID {
 		return m;
 	}
 
-	public String getPersonalData(PersonalData d) throws CardException, UnsupportedEncodingException {
+	public String getPersonalData(PersonalData d) throws CardException , EstEIDException{
 		if (currentFID != FID_5044) {
 			select(FID_3F00);
 			select(FID_EEEE);
 			select(FID_5044);
 		}
-		return new String(read_record(d.getRec()), "ISO-8859-15").trim();
+		try {
+			return new String(read_record(d.getRec()), "ISO-8859-15").trim();
+		} catch (UnsupportedEncodingException e) {
+			throw new EstEIDException("Invalid encoding", e);
+		}
 	}
 
 	public static CommandAPDU select_apdu(int fid, boolean fci) {
@@ -351,23 +343,20 @@ public final class EstEID {
 		}
 	}
 	// File handling. Returns FCI, if any
-	public byte[] select(int fid) throws CardException {
+	public byte[] select(int fid) throws CardException, EstEIDException {
 		ResponseAPDU resp = check(transmit(select_apdu(fid, true)));
 		currentFID = fid;
 		return resp.getData();
 	}
-	public byte[] read_file(final int bytes) throws CardException {
+	public byte[] read_file(final int bytes) throws CardException, EstEIDException{
 		byte[] bb = new byte[bytes];
 		for (int i = 0; i<= (bytes / chunksize); i++) {
 			final int offset = i*chunksize;
 			ResponseAPDU r = transmit(new CommandAPDU(0x00, INS_READ_BINARY, offset>>8, offset & 0xFF, chunksize));
-			try {
-				check(r);
-			} catch (EstEIDException e) {
-				// "Truncated read". Ignore.
-				if (e.getSW() != 0x6282) {
-					throw e;
-				}
+
+			// Ignore truncated read
+			if (r.getSW() != 0x6282) {
+				EstEIDException.check(r);
 			}
 			System.arraycopy(r.getData(), 0, bb, offset, r.getData().length);
 		}
@@ -377,13 +366,13 @@ public final class EstEID {
 	public static CommandAPDU read_record_apdu(byte recno) {
 		return new CommandAPDU(0x00, INS_READ_RECORD, recno, 0x04, 256);
 	}
-	public byte[] read_record(final byte recno) throws CardException {
+	public byte[] read_record(final byte recno) throws CardException, EstEIDException {
 		ResponseAPDU r = transmit(read_record_apdu(recno));
 		return check(r).getData();
 	}
 
 
-	public byte[] read_certificate_bytes(int fid) throws CardException {
+	public byte[] read_certificate_bytes(int fid) throws CardException, EstEIDException {
 		select(FID_3F00);
 		select(FID_EEEE);
 		byte[] fci = select(fid);
@@ -394,7 +383,7 @@ public final class EstEID {
 		}
 		return read_file(size);
 	}
-	private X509Certificate readCertificate(int fid) throws CardException {
+	private X509Certificate readCertificate(int fid) throws CardException, EstEIDException {
 		try {
 			CertificateFactory cf = CertificateFactory.getInstance("X509");
 			return (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(read_certificate_bytes(fid)));
@@ -410,27 +399,27 @@ public final class EstEID {
 	public X509Certificate readSignCert() throws EstEIDException, CardException {
 		return readCertificate(FID_DDCE);
 	}
-	public String getAppVersion() throws CardException {
+	public String getAppVersion() throws CardException, EstEIDException {
 		byte [] v = transmit(new CommandAPDU(0x00, 0xCA, 0x01, 0x00, 0x03)).getData();
 		if (v.length == 2) {
 			return String.format("%d.%d", v[0], v[1]);
 		} else if (v.length == 3) {
 			return String.format("%d.%d.%d", v[0], v[1], v[2]);
 		} else {
-			throw new RuntimeException("Invalid length for EstEID app version: " + v.length);
+			throw new EstEIDException("Invalid length for EstEID app version: " + v.length);
 		}
 	}
 
 	// Crypto operations
-	public void se_restore(int i) throws CardException {
+	public void se_restore(int i) throws CardException, EstEIDException {
 		check(transmit(new CommandAPDU(0x00, INS_MANAGE_SECURITY_ENVIRONMENT, 0xF3, i)));
 	}
 
-	public void se_keyref(int type, int ref) throws CardException {
+	public void se_keyref(int type, int ref) throws CardException, EstEIDException {
 		check(transmit(new CommandAPDU(0x00, INS_MANAGE_SECURITY_ENVIRONMENT, 0x41, type, new byte[] {(byte) 0x83, 0x03, (byte) 0x80, (byte) (ref >> 8), (byte) ref})));
 	}
 
-	public byte[] sign(byte[] data, String pin) throws WrongPINException, CardException {
+	public byte[] sign(byte[] data, String pin) throws WrongPINException, CardException, EstEIDException {
 		select(FID_3F00);
 		select(FID_EEEE);
 		se_restore(1);
@@ -439,7 +428,7 @@ public final class EstEID {
 		return check(transmit(cmd)).getData();
 	}
 
-	public byte[] authenticate(byte[] data, String pin) throws WrongPINException, CardException {
+	public byte[] authenticate(byte[] data, String pin) throws WrongPINException, CardException, EstEIDException {
 		select(FID_3F00);
 		select(FID_EEEE);
 		se_restore(1);
@@ -448,7 +437,7 @@ public final class EstEID {
 		return check(transmit(cmd)).getData();
 	}
 
-	public byte[] decrypt(byte[] data, String pin) throws WrongPINException, CardException {
+	public byte[] decrypt(byte[] data, String pin) throws WrongPINException, CardException, EstEIDException {
 		select(FID_3F00);
 		select(FID_EEEE);
 		se_restore(6);
@@ -483,7 +472,7 @@ public final class EstEID {
 	public ResponseAPDU transmit(CommandAPDU cmd) throws CardException {
 		return channel.transmit(cmd);
 	}
-	public ResponseAPDU check(CommandAPDU cmd) throws CardException {
+	public ResponseAPDU check(CommandAPDU cmd) throws EstEIDException, CardException {
 		return EstEIDException.check(transmit(cmd));
 	}
 	private static ResponseAPDU check(ResponseAPDU r) throws EstEIDException {
@@ -492,22 +481,15 @@ public final class EstEID {
 
 	// Exceptions
 	@SuppressWarnings("serial")
-	public static class EstEIDException extends CardException {
-		private int sw;
+	public static class EstEIDException extends Exception {
 		private EstEIDException(int sw, String message) {
 			super(message + ": 0x" + Integer.toHexString(sw).toUpperCase());
-			this.sw = sw;
 		}
 		public EstEIDException(String msg) {
 			super(msg);
-			this.sw = 0x0000;
 		}
 		public EstEIDException(String msg, Throwable reason) {
 			super(msg, reason);
-			this.sw = 0x0000;
-		}
-		public int getSW() {
-			return sw;
 		}
 		public static ResponseAPDU check(ResponseAPDU r) throws EstEIDException {
 			return check(r, "Unexpected response");
@@ -529,8 +511,12 @@ public final class EstEID {
 			this.status = status;
 		}
 
+		public static ResponseAPDU check(ResponseAPDU r) throws WrongPINException {
+			check(r.getSW());
+			return r;
+		}
 		public static void check(int sw) throws WrongPINException {
-			if ((sw&0x6300) == 0x6300) {
+			if ((sw & 0x6300) == 0x6300) {
 				throw new WrongPINException((byte) (sw & 0xF), "");
 			} else if (sw == 0x6983) { // FIXME symbol
 				throw new WrongPINException((byte) 0, " (blocked)");
@@ -545,7 +531,7 @@ public final class EstEID {
 		}
 	}
 
-	public void crypto_tests(String pin1, String pin2) throws WrongPINException, CardException {
+	public void crypto_tests(String pin1, String pin2) throws WrongPINException, EstEIDException, CardException {
 		Map<PIN, Byte> retries = getPINCounters();
 		if (retries.get(PIN1) < 3 || retries.get(PIN2) < 3) {
 			throw new IllegalStateException("Will not run crypto tests on a card with not-known or blocked PINs!");
@@ -609,7 +595,7 @@ public final class EstEID {
 		}
 	}
 
-	public void pin_tests(String pin1, String pin2, String puk) throws CardException, WrongPINException {
+	public void pin_tests(String pin1, String pin2, String puk) throws CardException, WrongPINException, EstEIDException {
 
 		Map<PIN, Byte> retries = getPINCounters();
 		if (retries.get(PIN1) < 3 || retries.get(PIN2) < 3 || retries.get(PUK) < 3) {

@@ -47,6 +47,7 @@ import org.bouncycastle.openssl.PEMKeyPair;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.esteid.EstEID;
+import org.esteid.EstEID.EstEIDException;
 
 // Given a connection to a FakeEstEID applet, provides a higher level interface for the possibilities.
 public class FakeEstEIDManager {
@@ -80,7 +81,7 @@ public class FakeEstEIDManager {
 			byte[] chunk = Arrays.copyOfRange(c, i*chunksize, i*chunksize+chunksize);
 			System.arraycopy(chunk, 0, d, 2, chunk.length);
 			CommandAPDU cmd = new CommandAPDU(0x80, 0x02, num, 0x00, d);
-			check(channel.transmit(cmd));
+			EstEIDException.check(channel.transmit(cmd));
 		}
 
 	}
@@ -116,20 +117,20 @@ public class FakeEstEIDManager {
 		send_key(key, num);
 	}
 
-	public void send_key(RSAPrivateCrtKey key, int num) throws CardException {
+	public void send_key(RSAPrivateCrtKey key, int num) throws CardException, EstEIDException {
 		//card.beginExclusive();
 		try {
 			CommandAPDU cmd = null;
 			cmd = new CommandAPDU(0x80, 0x03, num, 0x01, unsigned(key.getPrimeP()));
-			check(channel.transmit(cmd));
+			EstEIDException.check(channel.transmit(cmd));
 			cmd = new CommandAPDU(0x80, 0x03, num, 0x02, unsigned(key.getPrimeQ()));
-			check(channel.transmit(cmd));
+			EstEIDException.check(channel.transmit(cmd));
 			cmd = new CommandAPDU(0x80, 0x03, num, 0x03, unsigned(key.getPrimeExponentP()));
-			check(channel.transmit(cmd));
+			EstEIDException.check(channel.transmit(cmd));
 			cmd = new CommandAPDU(0x80, 0x03, num, 0x04, unsigned(key.getPrimeExponentQ()));
-			check(channel.transmit(cmd));
+			EstEIDException.check(channel.transmit(cmd));
 			cmd = new CommandAPDU(0x80, 0x03, num, 0x05, unsigned(key.getCrtCoefficient()));
-			check(channel.transmit(cmd));
+			EstEIDException.check(channel.transmit(cmd));
 		} finally {
 			//card.endExclusive();
 		}
@@ -168,7 +169,7 @@ public class FakeEstEIDManager {
 			r.nextBytes(rnd);
 			cmd = new CommandAPDU(0x00, 0x88, 0x00, 0x00, rnd, 256);
 			resp = channel.transmit(cmd);
-			check(resp);
+			EstEIDException.check(resp);
 			verify_cipher.init(Cipher.DECRYPT_MODE, authcert.getPublicKey());
 			byte[] result = verify_cipher.doFinal(resp.getData());
 			if (!java.util.Arrays.equals(rnd, result)) {
@@ -178,7 +179,7 @@ public class FakeEstEIDManager {
 			r.nextBytes(rnd);
 			cmd = new CommandAPDU(0x00, 0x2A, 0x9E, 0x9A, rnd, 256);
 			resp = channel.transmit(cmd);
-			check(resp);
+			EstEIDException.check(resp);
 			verify_cipher.init(Cipher.DECRYPT_MODE, signcert.getPublicKey());
 			result = verify_cipher.doFinal(resp.getData());
 			if (!java.util.Arrays.equals(rnd, result)) {
@@ -189,7 +190,7 @@ public class FakeEstEIDManager {
 		for (int i=0;i<defaultDataFile.length; i++) {
 			cmd = new CommandAPDU(0x80, 0x04, i+1, 0x00, defaultDataFile[i].toUpperCase().getBytes("ISO8859-15"));
 			resp = channel.transmit(cmd);
-			check(resp);
+			EstEIDException.check(resp);
 		}
 	}
 
@@ -200,11 +201,6 @@ public class FakeEstEIDManager {
 		} else if (bytes[0] == 0x00)
 			return Arrays.copyOfRange(bytes, 1, bytes.length);
 		return bytes;
-	}
-
-	private static void check(ResponseAPDU resp) {
-		if (resp.getSW() != 0x9000)
-			throw new RuntimeException("PROBLEMO AMIGO!");
 	}
 
 	private static boolean verifyKeypairIntegrity(RSAPrivateCrtKey privkey, RSAPublicKey pubkey) throws NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException {
