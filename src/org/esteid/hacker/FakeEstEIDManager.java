@@ -203,8 +203,11 @@ public class FakeEstEIDManager {
 	}
 
 	private static void check(ResponseAPDU resp) {
-		if (resp.getSW() != 0x9000)
+		int result = resp.getSW();
+		if (result != 0x9000) {
+			System.err.printf("Received unexpected status: %02X\n", result);
 			throw new RuntimeException("PROBLEMO AMIGO!");
+		}
 	}
 
 	private static boolean verifyKeypairIntegrity(RSAPrivateCrtKey privkey, RSAPublicKey pubkey) throws NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException {
