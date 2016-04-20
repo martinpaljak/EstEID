@@ -1,8 +1,8 @@
 # EstEID hacker &nbsp; [![Build Status](https://travis-ci.org/martinpaljak/esteidhacker.svg?branch=master)](https://travis-ci.org/martinpaljak/esteidhacker) [![Coverity status](https://scan.coverity.com/projects/8551/badge.svg?flat=1)](https://scan.coverity.com/projects/martinpaljak-esteidhacker)
 
-Java ~~utilities~~ source code for everything and anything related to [EstEID](https://esteid.org):
+Java utility and source code for everything and anything related to [EstEID](https://esteid.org):
 
-* [EstEID.java](#esteidjava)
+* [EstEID.java - host API](#esteidjava)
 * [FakeEstEID.java](src/org/esteid/hacker/FakeEstEID.java) - utility for working with a [FakeEstEIDApplet](https://github.com/martinpaljak/AppletPlayground/wiki/FakeEstEID) instance. Supports emulation inside [vJCRE](https://github.com/martinpaljak/vJCRE#import-projavacardvre).
 * [FakeEstEIDCA](#fakeesteidca)
 * [CLI.java](src/org/esteid/hacker/CLI.java) - code of the command line utility that serves as usage documentation.
@@ -17,8 +17,9 @@ Java ~~utilities~~ source code for everything and anything related to [EstEID](h
 * In this README `esteid` is used as an alias for `java -jar esteid-app.jar`
 
 ### Emulation
-* Create a new FakeEstEID card (requires a [supported JavaCard](https://github.com/martinpaljak/GlobalPlatform/wiki/TestedCards)):
-        
+* Create a new FakeEstEID card
+
+
         esteid -install -ca fake.ca -new
 
 * Run EstEID test-suite against a real card (via PC/SC):
@@ -95,7 +96,7 @@ Java ~~utilities~~ source code for everything and anything related to [EstEID](h
         $ esteid -ca fake.ca -dump
 
 ## Dependencies
-* [GlobalPlatform](https://github.com/martinpaljak/GlobalPlatform#globalplatform-from-openkms) (LGPL)
+* [GlobalPlatformPro](https://github.com/martinpaljak/GlobalPlatformPro) (LGPL)
 * [apdu4j](https://github.com/martinpaljak/apdu4j) (MIT)
 * [FakeEstEIDApplet](https://github.com/martinpaljak/AppletPlayground/wiki/FakeEstEID) from [AppletPlayground](https://github.com/martinpaljak/AppletPlayground#applet-playground) (MIT)
 * [vJCRE](https://github.com/martinpaljak/vJCRE#import-projavacardvre) (LGPL)
