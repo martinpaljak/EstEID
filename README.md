@@ -117,8 +117,12 @@ Mixed LGPL/MIT, please check individual files! Other options available upon requ
 
 ### EstEID.java
 
-Encapsulates all the APDU protocol and exposes high-level and meaningful API for making operations with the card.
-Can talk to any PC/SC terminal or somethig else exposd via `javax.smartcardio`.
+Encapsulates all the APDU protocol knowledge and exposes high-level and meaningful API for making operations with the card (more precisely: on-card application). Can talk to any PC/SC terminal or somethig else exposed via `javax.smartcardio` CommandAPDU/ResponseAPDU pairs.
+
+Exception handling:
+* [CardException](https://docs.oracle.com/javase/8/docs/jre/api/security/smartcardio/spec/javax/smartcardio/CardException.html) when javax.smartcardio classes fail
+* EstEIDException when card protocol (or data formats) have unexpected situations
+* WrongPINException when a passed in PIN is incorrect
 
 Source: [EstEID.java](src/org/esteid/EstEID.java)
 
