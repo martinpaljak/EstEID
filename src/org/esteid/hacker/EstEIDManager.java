@@ -24,7 +24,6 @@ import javax.smartcardio.CardException;
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 
-import org.esteid.EstEID;
 import org.esteid.EstEID.EstEIDException;
 import org.esteid.hacker.SecureChannel.SecureChannelException;
 import org.slf4j.Logger;

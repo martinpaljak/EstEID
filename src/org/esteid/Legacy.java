@@ -20,7 +20,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import apdu4j.HexUtils;
 
-public class Legacy {
+public final class Legacy {
 	/**
 	 * Given a HEX string, converts it to pure numbers.
 	 *
@@ -44,8 +44,8 @@ public class Legacy {
 		return pins;
 	}
 
-	private static HashMap<String, String> string2pins(String s) {
-		HashMap<String, String> pins = new HashMap<>();
+	private static Map<String, String> string2pins(String s) {
+		Map<String, String> pins = new HashMap<>();
 		pins.put("PIN1", s.substring(0, 4));
 		pins.put("PIN2", s.substring(4, 9));
 		pins.put("PUK", s.substring(9, 17));

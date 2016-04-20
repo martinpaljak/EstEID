@@ -3,7 +3,7 @@ package org.esteid;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class IDCode {
+public final class IDCode {
 
 	// Given the multipliers, calculate sum
 	private static int multsum(int[] mult, int[] src) {
