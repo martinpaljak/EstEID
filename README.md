@@ -14,11 +14,10 @@ Java utility and source code for everything and anything related to [EstEID](htt
         cd esteidhacker
         ant
 
-* In this README `esteid` is used as an alias for `java -jar esteid-app.jar`
+* In this README `esteid` is used as an alias for `java -jar esteid-app.jar`. `esteid.exe` can be used on Windows.
 
 ### Emulation
 * Create a new FakeEstEID card
-
 
         esteid -install -ca fake.ca -new
 
