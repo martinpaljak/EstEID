@@ -134,7 +134,10 @@ Source: [EstEID.java](src/org/esteid/EstEID.java)
 * https://eid.eesti.ee/index.php/Sample_applications#Claims_application
   * Complete "ecosystem" sample but not easily re-usable.
 * [esteid.c](https://github.com/martinpaljak/esteid.c)
-
+  * :( not yet in code  
+* [MOCCA](https://www.egiz.gv.at/en/schwerpunkte/9-MOCCA) - [EstEIDCard.java](https://joinup.ec.europa.eu/svn/mocca/trunk/smcc/src/main/java/at/gv/egiz/smcc/EstEIDCard.java)  
+  * :) Java
+  * :| ... messy
 
 ### FakeEstEIDCA
 Utility for maintaining a [SK](http://www.sk.ee) look-alike CA for [EstEID related certificates](https://www.sk.ee/repositoorium/sk-sertifikaadid/) (root, esteid, user auth/sign) based on BouncyCastle.
