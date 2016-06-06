@@ -135,7 +135,7 @@ Source: [EstEID.java](src/org/esteid/EstEID.java)
   * Complete "ecosystem" sample but not easily re-usable.
 * [esteid.c](https://github.com/martinpaljak/esteid.c)
   * :( not yet in code  
-* [MOCCA](https://www.egiz.gv.at/en/schwerpunkte/9-MOCCA) - [EstEIDCard.java](https://joinup.ec.europa.eu/svn/mocca/trunk/smcc/src/main/java/at/gv/egiz/smcc/EstEIDCard.java)  
+* [MOCCA](https://www.egiz.gv.at/en/schwerpunkte/9-MOCCA) - [EstEIDCard.java](https://joinup.ec.europa.eu/svn/mocca/trunk/smcc/src/main/java/at/gv/egiz/smcc/EstEIDCard.java) http://git.egiz.gv.at/mocca/
   * :) Java
   * :| ... messy
 
