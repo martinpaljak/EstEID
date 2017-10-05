@@ -1,9 +1,29 @@
 package org.esteid;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class IDCode {
+	private final String countryCode;
+	private final String code;
+
+
+	public IDCode (String country, String code) {
+		countryCode = country;
+		this.code = code;
+	}
+
+	public String getCountryCode() {
+		return countryCode;
+	}
+
+	public String getCode() {
+		return code;
+	}
+
+	public static final String REGEXP = "[1-6][0-9]{2}[0,1][0-9][0,1,2,3][0-9]{5}";
 
 	// Given the multipliers, calculate sum
 	private static int multsum(int[] mult, int[] src) {
@@ -15,8 +35,8 @@ public final class IDCode {
 	}
 
 	// Validate an Estonian ID-code
-	public static boolean is_valid_idcode(String code) {
-		if (!code.matches("\\d{11}"))
+	public static boolean check(String code) {
+		if (!code.matches(REGEXP))
 			return false;
 		int[] original = new int[code.length()];
 		for (int i = 0; i < code.length(); i++) {
@@ -40,15 +60,22 @@ public final class IDCode {
 		return false;
 	}
 
-	public static String extract_idcode(String s) {
-		Pattern p = Pattern.compile("\\d{11}");
+	public static List<String> extract(String s) {
+		List<String> result = new ArrayList<>();
+		Pattern p = Pattern.compile(REGEXP);
 		Matcher m = p.matcher(s);
 		while (m.find()) {
 			String c = m.group();
-			if (is_valid_idcode(c)) {
-				return c;
+			if (check(c)) {
+				result.add(c);
 			}
 		}
-		return null;
+		return result;
+	}
+
+	public static void main(String[] args) {
+		for (String s: extract("See keegi on 38207162722 ja lisaks 38207162766 ja bööh")) {
+			System.out.println(s);
+		}
 	}
 }

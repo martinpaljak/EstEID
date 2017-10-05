@@ -578,7 +578,7 @@ public class CLI {
 	static String pub2pem(RSAPublicKey p) {
 		return "-----BEGIN PUBLIC KEY-----\n" + Base64.getMimeEncoder().encodeToString(p.getEncoded()) + "\n-----END PUBLIC KEY-----";
 	}
-	static String crt2pem(X509Certificate c) throws CertificateEncodingException {
+	public static String crt2pem(X509Certificate c) throws CertificateEncodingException {
 		return "-----BEGIN CERTIFICATE-----\n" + Base64.getMimeEncoder().encodeToString(c.getEncoded()) + "\n-----END CERTIFICATE-----";
 	}
 

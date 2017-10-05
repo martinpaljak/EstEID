@@ -117,7 +117,7 @@ public class FakeEstEIDCA {
 	SignatureException, IOException, NoSuchAlgorithmException, ParseException, OperatorCreationException, CertificateException {
 
 		// Load real root certificate
-		X509CertificateHolder real = getRealCert("/resources/sk-root.pem");
+		X509CertificateHolder real = getRealCert("sk-root.pem");
 
 		// Use values from real certificate
 		JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(real.getIssuer(), real.getSerialNumber(), Time.getInstance(new ASN1GeneralizedTime(real.getNotBefore())), Time.getInstance(new ASN1GeneralizedTime(real.getNotAfter())), real.getSubject(), kp.getPublic());
@@ -143,7 +143,7 @@ public class FakeEstEIDCA {
 	CertificateException {
 
 		// Load current root certificate
-		X509CertificateHolder real = getRealCert("/resources/sk-esteid.pem");
+		X509CertificateHolder real = getRealCert("sk-esteid.pem");
 
 		JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(real.getIssuer(), real.getSerialNumber(),
 				Time.getInstance(new ASN1UTCTime(real.getNotBefore())), Time.getInstance(new ASN1GeneralizedTime(real.getNotAfter())), real.getSubject(), esteid.getPublic());
@@ -214,9 +214,9 @@ public class FakeEstEIDCA {
 
 		X509CertificateHolder real;
 		if (signature) {
-			real = getRealCert("/resources/sk-sign.pem");
+			real = getRealCert("sk-sign.pem");
 		} else {
-			real = getRealCert("/resources/sk-auth.pem");
+			real = getRealCert("sk-auth.pem");
 		}
 		serial = real.getSerialNumber();
 		System.out.println("Generating from subject: " + real.getSubject());
