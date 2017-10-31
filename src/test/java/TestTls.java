@@ -3,6 +3,7 @@ import org.esteid.jca.AbstractDelegate;
 import org.esteid.jca.DelegatingProvider;
 import org.esteid.jca.CardDelegate;
 import org.esteid.jca.SmartIDDelegate;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import javax.net.ssl.*;
@@ -19,6 +20,7 @@ import java.util.Map;
 public class TestTls {
 
     @Test
+    @Ignore
     public void testTlsWithSmartID() throws Exception {
         URL url = new URL("https://localhost:4433");
         X509Certificate mycert = TestSmartID.crt;
@@ -32,6 +34,7 @@ public class TestTls {
     }
 
     @Test
+    @Ignore
     public void testTlsWithCard() throws Exception {
         URL url = new URL("https://localhost:4433");
         //URL url = new URL("https://www.eesti.ee/idportaal/login.html");

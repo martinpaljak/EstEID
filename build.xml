@@ -4,73 +4,27 @@
   <target name="fetch" description="fetch the dependencies">
     <mkdir dir="lib"/>
     <mkdir dir="ext"/>
-    <!-- Remember to update .classpath as well! -->
-    <get src="https://repo1.maven.org/maven2/net/sf/jopt-simple/jopt-simple/4.9/jopt-simple-4.9.jar" dest="lib" verbose="true" skipexisting="true"/>
-    <get src="http://repo2.maven.org/maven2/org/slf4j/slf4j-api/1.7.13/slf4j-api-1.7.13.jar" dest="lib" verbose="true" skipexisting="true"/>
-    <get src="http://repo2.maven.org/maven2/org/slf4j/slf4j-simple/1.7.13/slf4j-simple-1.7.13.jar" dest="lib" verbose="true" skipexisting="true"/>
-    <get src="http://downloads.bouncycastle.org/java/bcprov-jdk15on-154.jar" dest="lib" verbose="true" skipexisting="true"/>
-    <get src="http://downloads.bouncycastle.org/java/bcpkix-jdk15on-154.jar" dest="lib" verbose="true" skipexisting="true"/>
-    <get src="https://github.com/martinpaljak/apdu4j/releases/download/v0.0.35/apdu4j-pcsc.jar" dest="lib" verbose="true" skipexisting="true"/>
-    <get src="https://github.com/martinpaljak/GlobalPlatformPro/releases/download/v0.3.9/openkms-gp.jar" dest="lib" verbose="true" skipexisting="true"/>
-    <get src="https://github.com/martinpaljak/vJCRE/releases/download/r1/vjcre.jar" dest="lib" verbose="true" skipexisting="true"/>
-    <get src="https://github.com/puniverse/capsule/releases/download/v1.0.2/capsule-1.0.2.jar" dest="ext" verbose="true" skipexisting="true"/>
-    <checksum algorithm="SHA-256" file="lib/jopt-simple-4.9.jar" property="26c5856e954b5f864db76f13b86919b59c6eecf9fd930b96baa8884626baf2f5" verifyProperty="joptOK"/>
-    <checksum algorithm="SHA-256" file="lib/slf4j-api-1.7.13.jar" property="20d68d0c2e4fb984ffc164852b8b68df49a2b8716076f576881bcef7649a0e35" verifyProperty="slfjapiOK"/>
-    <checksum algorithm="SHA-256" file="lib/slf4j-simple-1.7.13.jar" property="4709c0b535057c6a9a794da9522b1291de9c72b6d61f41b7ecf63156bc7bee35" verifyProperty="slfjsimpleOK"/>
-    <checksum algorithm="SHA-256" file="lib/bcprov-jdk15on-154.jar" property="d0ae14598f9c528d2ab7bb8ed00e785a5440f692712cd362d69328aba25efb57" verifyProperty="bouncy1OK"/>
-    <checksum algorithm="SHA-256" file="lib/bcpkix-jdk15on-154.jar" property="d618dcfbf0337b91015b21d4b398175ae96382a82c7e1d6e8c657fcd236463c7" verifyProperty="bouncy2OK"/>
-    <checksum algorithm="SHA-256" file="lib/apdu4j-pcsc.jar" property="c5106420a1bada8db7f3870eefd3d9bd860d9d230537c233cd714f99d41469e5" verifyProperty="apduOK"/>
-    <checksum algorithm="SHA-256" file="lib/openkms-gp.jar" property="6fd47155e2ad8d48d61e8503eec25303d5eaccaab8eaaefc1c29030a1047b77c" verifyProperty="gpOK"/>
-    <checksum algorithm="SHA-256" file="lib/vjcre.jar" property="20260d4c63d54eba540eb6eee931b9bff9df0ad97823841848126ea36c04e6b4" verifyProperty="vjcreOK"/>
-    <checksum algorithm="SHA-256" file="ext/capsule-1.0.2.jar" property="33f52912cb741becb611e6f116cdfe4c144d21b665c0504f40111c5cc3bede1c" verifyProperty="capsuleOK"/>
+    <get src="https://www.bouncycastle.org/download/bcprov-jdk15on-158.jar" dest="lib" verbose="true" skipexisting="true"/>
+    <get src="http://central.maven.org/maven2/co/paralleluniverse/capsule/1.0.3/capsule-1.0.3.jar" dest="ext" verbose="true" skipexisting="true"/>
+    <checksum algorithm="SHA-256" file="ext/capsule-1.0.3.jar" property="d7c892b766a6f9cb99996d259c5c88e21330d86c2d6a1d7750a1ce9daf6b1ab5" verifyProperty="capsuleOK"/>
+    <checksum algorithm="SHA-256" file="lib/bcprov-jdk15on-158.jar" property="eb61ab61065ed96f9f2d5cde94d326233c09fdec9333c1185f2fa65ee88a4236" verifyProperty="bouncyOK"/>
     <fail message="Checksum failure">
       <condition>
         <or>
-          <isfalse value="${joptOK}"/>
-          <isfalse value="${slfjapiOK}"/>
-          <isfalse value="${slfjsimpleOK}"/>
-          <isfalse value="${bouncy1OK}"/>
-          <isfalse value="${bouncy2OK}"/>
-          <isfalse value="${apduOK}"/>
-          <isfalse value="${gpOK}"/>
-          <isfalse value="${vjcreOK}"/>
           <isfalse value="${capsuleOK}"/>
+          <isfalse value="${bouncyOK}"/>
         </or>
       </condition>
     </fail>
   </target>
-  <!-- Build the software -->
-  <path id="build.classpath">
-    <pathelement location="lib/slf4j-api-1.7.13.jar"/>
-    <pathelement location="lib/bcprov-jdk15on-154.jar"/>
-    <pathelement location="lib/bcpkix-jdk15on-154.jar"/>
-    <pathelement location="lib/jopt-simple-4.9.jar"/>
-    <pathelement location="lib/apdu4j-pcsc.jar"/>
-    <pathelement location="lib/openkms-gp.jar"/>
-    <pathelement location="lib/vjcre.jar"/>
-    <pathelement location="lib/FakeEstEID.jar"/>
-  </path>
-  <target name="compile" description="compile the source" depends="fetch">
-    <mkdir dir="build"/>
-    <javac srcdir="src" destdir="build" includeantruntime="false" excludes="**/tests/**" debug="true" debuglevel="lines,vars,source">
-      <compilerarg value="-Xlint"/>
-      <classpath refid="build.classpath"/>
-    </javac>
-  </target>
   <!-- Package it into a nice little JAR -->
-  <target name="dist" depends="compile" description="generate the distribution">
-    <exec command="git describe --always --tags" output="build/org/esteid/version.txt"/>
-    <jar destfile="esteid.jar" level="9" basedir="build">
-      <fileset dir="src">
-        <include name="resources/*.pem"/>
-      </fileset>
-    </jar>
+  <target name="dist" description="generate the distribution">
     <jar manifest="Manifest.mf" destfile="esteid-app.jar" level="9">
       <fileset dir="lib">
-        <include name="*.jar"/>
+        <include name="bcprov-jdk15on-158.jar"/>
       </fileset>
-      <fileset file="esteid.jar"/>
-      <zipfileset src="ext/capsule-1.0.2.jar" includes="Capsule.class"/>
+      <fileset file="target/esteid.jar"/>
+      <zipfileset src="ext/capsule-1.0.3.jar" includes="Capsule.class"/>
     </jar>
   </target>
   <!-- Wrap the JAR into .EXE for Windows users -->

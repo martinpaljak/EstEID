@@ -2,6 +2,7 @@ import apdu4j.HexUtils;
 import org.esteid.jca.CardDelegate;
 import org.esteid.jca.DelegatingProvider;
 import org.esteid.jca.NotificationInterface;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import javax.net.ssl.X509KeyManager;
@@ -27,6 +28,7 @@ public class TestCardProvider {
     };
 
     @Test
+    @Ignore
     public void testCardProvider() throws Exception {
         DelegatingProvider cp = DelegatingProvider.fromDelegate(CardDelegate.any(false, CONSOLE));
         Security.insertProviderAt(cp, 0);
