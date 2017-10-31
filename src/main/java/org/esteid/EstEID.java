@@ -210,7 +210,7 @@ public final class EstEID {
 
     public static String getVersion() {
         String version = "unknown-development";
-        try (InputStream versionfile = EstEID.class.getResourceAsStream("version.txt")) {
+        try (InputStream versionfile = EstEID.class.getResourceAsStream("pro_version.txt")) {
             if (versionfile != null) {
                 try (BufferedReader vinfo = new BufferedReader(new InputStreamReader(versionfile, "UTF-8"))) {
                     version = vinfo.readLine();

@@ -86,11 +86,11 @@
         </dependency>
     </dependencies>
     <build>
-        <!--resources>
+        <resources>
           <resource>
             <directory>target/generated-resources</directory>
           </resource>
-        </resources-->
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -107,7 +107,7 @@
                 </executions>
                 <configuration>
                     <executable>git</executable>
-                    <outputFile>target/generated-resources/org/esteid/hacker/pro_version.txt</outputFile>
+                    <outputFile>target/generated-resources/org/esteid/pro_version.txt</outputFile>
                     <arguments>
                         <argument>describe</argument>
                         <argument>--tags</argument>
