@@ -7,7 +7,6 @@ import org.esteid.hacker.CLI;
 import javax.naming.InvalidNameException;
 import javax.naming.ldap.LdapName;
 import javax.naming.ldap.Rdn;
-import javax.net.ssl.*;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
@@ -28,10 +27,6 @@ public class SmartIDDelegate extends AbstractDelegate {
         hashAlgosSmart.put("SHA512withRSA", HashType.SHA512);
     }
 
-    final String uuid;
-    final String name;
-    final String countrycode;
-    final String idcode;
     final SmartIdClient client;
     final NationalIdentity nationalIdentity;
     final NotificationInterface notify;
@@ -39,10 +34,6 @@ public class SmartIDDelegate extends AbstractDelegate {
     private boolean sign = false;
 
     private SmartIDDelegate(String uuid, String name, String countrycode, String idcode, boolean sign, NotificationInterface notify) {
-        this.uuid = uuid;
-        this.name = name;
-        this.countrycode = countrycode;
-        this.idcode = idcode;
         nationalIdentity = new NationalIdentity(countrycode, idcode);
 
         client = new SmartIdClient();
