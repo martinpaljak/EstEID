@@ -26,7 +26,6 @@ addons:
 deploy:
   provider: releases
   file:
-  - esteid.jar
   - esteid-app.jar
   - esteid.exe
   skip_cleanup: true
