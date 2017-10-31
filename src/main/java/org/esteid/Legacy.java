@@ -41,9 +41,9 @@ public final class Legacy {
      * @return Map of calculated PIN codes
      */
     public static Map<String, String> pins_from_cmk_and_envelope(byte[] cmk, String envelope) {
-        byte[] data = envelope.getBytes(StandardCharsets.UTF_8);
-        byte[] keys = cgram(cmk, data);
-        Map<String, String> pins = string2pins(hex2numbers(HexUtils.bin2hex(keys)));
+        byte[] data = envelope.getBytes(StandardCharsets.US_ASCII);
+        byte[] key = cgram(cmk, data);
+        Map<String, String> pins = string2pins(hex2numbers(HexUtils.bin2hex(cgram(key, data))));
         return pins;
     }
 
