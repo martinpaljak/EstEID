@@ -57,18 +57,17 @@ public class FakeEstEIDCA {
     private static final String root = "root";
     private static final String esteid = "esteid";
 
-    private RSAPrivateCrtKey rootKey;
-    private X509Certificate rootCert;
-
-    private RSAPrivateCrtKey esteidKey;
-    private X509Certificate esteidCert;
-
     static {
         // Add BouncyCastle if not present
         if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
             Security.insertProviderAt(new BouncyCastleProvider(), 1);
         }
     }
+
+    private RSAPrivateCrtKey rootKey;
+    private X509Certificate rootCert;
+    private RSAPrivateCrtKey esteidKey;
+    private X509Certificate esteidCert;
 
     public void generate() throws NoSuchAlgorithmException, InvalidKeyException, IllegalStateException, NoSuchProviderException,
             SignatureException, IOException, ParseException, OperatorCreationException, CertificateException {
@@ -97,7 +96,7 @@ public class FakeEstEIDCA {
     }
 
     private X509CertificateHolder getRealCert(String path) throws IOException {
-        try (PEMParser pem = new PEMParser(new InputStreamReader(getClass().getResourceAsStream(path)))) {
+        try (PEMParser pem = new PEMParser(new InputStreamReader(getClass().getResourceAsStream(path), "UTF-8"))) {
             X509CertificateHolder crt = (X509CertificateHolder) pem.readObject();
             return crt;
         }
@@ -233,7 +232,6 @@ public class FakeEstEIDCA {
         } else {
             real = getRealCert("sk-auth.pem");
         }
-        serial = real.getSerialNumber();
         System.out.println("Generating from subject: " + real.getSubject());
         System.out.println("Generating subject: " + new X500Name(subject).toString());
 
@@ -315,7 +313,6 @@ public class FakeEstEIDCA {
         } else {
             real = getRealCert("sk-auth-ecc.pem");
         }
-        serial = real.getSerialNumber();
         System.out.println("Generating from subject: " + real.getSubject());
         System.out.println("Generating subject: " + new X500Name(subject).toString());
 

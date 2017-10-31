@@ -54,8 +54,6 @@ public class FakeEstEIDManager {
 
 	// Other fun constants
 	private static final String[] defaultDataFile = new String[] {"JÄNES-KARVANE", "SIILIPOISS", "Jesús MARIA", "G", "LOL", "01.01.0001", "10101010005", "A0000001", "31.12.2099", "TIIBET", "01.01.2014", "ALALINE", "SEE POLE PÄRIS KAART", " ", " ", " "};
-	public static final byte[] aid = new byte[] {(byte)0xD2, (byte)0x33, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x45, (byte)0x73, (byte)0x74, (byte)0x45, (byte)0x49, (byte)0x44, (byte)0x20, (byte)0x76, (byte)0x33, (byte)0x35};
-
 
 	private final CardChannel channel;
 
@@ -87,10 +85,10 @@ public class FakeEstEIDManager {
 	}
 
 	public void send_cert_pem(File f, int num) throws Exception {
-		PEMParser pem = new PEMParser(new InputStreamReader(new FileInputStream(f)));
-		X509CertificateHolder crt = (X509CertificateHolder) pem.readObject();
-		pem.close();
-		send_cert(crt.getEncoded(), num);
+		try (PEMParser pem = new PEMParser(new InputStreamReader(new FileInputStream(f), "UTF-8"))) {
+			X509CertificateHolder crt = (X509CertificateHolder) pem.readObject();
+			send_cert(crt.getEncoded(), num);
+		}
 	}
 
 	public void send_new_key(int num) throws Exception {
@@ -102,19 +100,19 @@ public class FakeEstEIDManager {
 	}
 
 	public void send_key_pem(File f, int num) throws Exception {
-		PEMParser pem = new PEMParser(new InputStreamReader(new FileInputStream(f)));
-		// OpenSSL genrsa makes a key pair.
-		Object o = pem.readObject();
-		RSAPrivateCrtKey key;
-		if (o instanceof org.bouncycastle.openssl.PEMKeyPair) {
-			PEMKeyPair pair = (PEMKeyPair) o;
-			JcaPEMKeyConverter convert = new JcaPEMKeyConverter();
-			key = (RSAPrivateCrtKey) convert.getPrivateKey(pair.getPrivateKeyInfo());
-		} else {
-			key = (RSAPrivateCrtKey) pem.readObject();
+		try (PEMParser pem = new PEMParser(new InputStreamReader(new FileInputStream(f), "UTF-8"))) {
+			// OpenSSL genrsa makes a key pair.
+			Object o = pem.readObject();
+			RSAPrivateCrtKey key;
+			if (o instanceof org.bouncycastle.openssl.PEMKeyPair) {
+				PEMKeyPair pair = (PEMKeyPair) o;
+				JcaPEMKeyConverter convert = new JcaPEMKeyConverter();
+				key = (RSAPrivateCrtKey) convert.getPrivateKey(pair.getPrivateKeyInfo());
+			} else {
+				key = (RSAPrivateCrtKey) pem.readObject();
+			}
+			send_key(key, num);
 		}
-		pem.close();
-		send_key(key, num);
 	}
 
 	public void send_key(RSAPrivateCrtKey key, int num) throws CardException, EstEIDException {

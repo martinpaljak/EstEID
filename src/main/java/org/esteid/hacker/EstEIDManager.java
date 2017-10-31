@@ -281,7 +281,7 @@ public class EstEIDManager {
 	}
 
 	public static void loadPINCodes(SecureChannel sc, String pin1, String pin2, String puk) throws CardException, SecureChannelException, EstEIDException {
-		CommandAPDU replace = new CommandAPDU(0x00, 0x05, 0x00, 0x00, GPUtils.concatenate(pin1.getBytes(), pin2.getBytes(), puk.getBytes()));
+		CommandAPDU replace = new CommandAPDU(0x00, 0x05, 0x00, 0x00, GPUtils.concatenate(pin1.getBytes(StandardCharsets.US_ASCII), pin2.getBytes(StandardCharsets.US_ASCII), puk.getBytes(StandardCharsets.US_ASCII)));
 		EstEIDException.check(sc.transmit(replace), "Could not replace PIN codes");
 	}
 

@@ -55,7 +55,7 @@ public final class SecureChannel {
 	private static IvParameterSpec nulliv = new IvParameterSpec(new byte[8]);
 
 	// the session keys and other properties, in a handy package
-	public class SessionState {
+	public static class SessionState {
 		boolean authenticated = false;
 		public byte[] SK1, SK2, SSC; // FIXME: too broad access
 		Set<String> macs = new HashSet<>(); // MAC-s used within the session.
@@ -377,7 +377,7 @@ public final class SecureChannel {
 			byte bitcount = 0;
 			// count set bits.
 			for (short j = 0; j < 8; j++) {
-				if (((byte) (buffer[i] >>> j) & (byte) 1) == (byte) 1) {
+				if (((byte) (buffer[i] >> j) & (byte) 1) == (byte) 1) {
 					bitcount++;
 				}
 			}

@@ -190,4 +190,14 @@ public final class DelegatingProvider extends Provider {
             return new byte[0];
         }
     }
+
+    // XXX: Just to silence findbugs
+    @Override
+    public boolean equals(Object o) {
+        return super.equals(o);
+    }
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
 }
