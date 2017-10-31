@@ -51,24 +51,6 @@ public class SmartIDDelegate extends AbstractDelegate {
             client.setRelyingPartyName("DEMO");
             client.setRelyingPartyUUID("00000000-0000-0000-0000-000000000000");
         } else {
-            SSLContext ssl;
-            try {
-                ssl = SSLContext.getInstance("TLSv1.2");
-                ssl.init(null, new TrustManager[]{AbstractDelegate.DUMMY}, null);
-            } catch (GeneralSecurityException e) {
-                e.printStackTrace();
-                throw new RuntimeException("No can do", e);
-            }
-
-            // This overrides everything, not good.
-            HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
-                @Override
-                public boolean verify(String s, SSLSession sslSession) {
-                    return true;
-                }
-            });
-
-            client.setSSLConext(ssl); // FIXME: pinning do here.
             client.setHostUrl("https://rp-api.smart-id.com/v1/");
             client.setRelyingPartyUUID(uuid);
             client.setRelyingPartyName(name);
