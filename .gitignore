@@ -5,3 +5,5 @@
 /*.jar
 /*.exe
 /lib/*.jar
+/.idea
+*.iml
