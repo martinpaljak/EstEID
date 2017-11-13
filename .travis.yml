@@ -2,6 +2,7 @@ sudo: false
 language: java
 jdk:
 - oraclejdk8
+install: true
 before_script:
 - mkdir -p ext
 - wget http://kent.dl.sourceforge.net/project/launch4j/launch4j-3/3.11/launch4j-3.11-linux.tgz

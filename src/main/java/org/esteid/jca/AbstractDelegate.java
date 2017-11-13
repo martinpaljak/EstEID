@@ -4,6 +4,7 @@ import apdu4j.HexUtils;
 
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
+import java.io.Console;
 import java.security.SignatureException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -68,8 +69,12 @@ public abstract class AbstractDelegate {
 
         @Override
         public String askPinCode(String info) {
-            if (System.console() != null) {
-                return new String(System.console().readPassword(info));
+            Console c = System.console();
+            if (c != null) {
+                char[] p = c.readPassword(info);
+                if (p == null)
+                    throw new IllegalStateException("Please enter a PIN code");
+                return new String(p);
             } else {
                 throw new RuntimeException("Need access to console for asking PIN!");
             }

@@ -3,11 +3,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.martinpaljak</groupId>
-    <artifactId>esteidhacker</artifactId>
+    <artifactId>esteid</artifactId>
     <packaging>jar</packaging>
-    <version>17.11.13-SNAPSHOT</version>
+    <version>17.11.13</version>
     <name>EstEID hacker</name>
     <url>https://github.com/martinpaljak/esteidhacker</url>
+    <description>Java code for working with EstEID cards</description>
     <scm>
         <url>https://github.com/martinpaljak/esteidhacker</url>
     </scm>
