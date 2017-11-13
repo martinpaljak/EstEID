@@ -24,7 +24,7 @@ addons:
     project:
       name: martinpaljak/esteidhacker
     notification_email: martin@martinpaljak.net
-    build_command: mvn compile
+    build_command: mvn clean compile
     branch_pattern: coverity
 deploy:
   provider: releases
