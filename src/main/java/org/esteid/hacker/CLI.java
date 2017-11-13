@@ -134,7 +134,7 @@ public class CLI {
         // Clone a card
         parser.accepts(OPT_CLONE, "Clone the card");
 
-        parser.accepts(OPT_EMULATE, "Emulate applet from JAR").withRequiredArg().ofType(File.class);
+        //parser.accepts(OPT_EMULATE, "Emulate applet from JAR").withRequiredArg().ofType(File.class);
         parser.accepts(OPT_TEST, "Run EstEID test-suite");
         parser.accepts(OPT_TEST_CRYPTO, "Run only crypto tests");
         parser.accepts(OPT_TEST_PINS, "Run only PIN tests");
