@@ -57,7 +57,7 @@ public class TestFakeCA {
 
         FakeEstEIDCA ca = generateOrLoadCA();
 
-        X509Certificate crt = ca.cloneUserCertificate(keyPair.getPublic(), FakeEstEIDCA.holder2pem(FakeEstEIDCA.getRealCert("sk-auth.pem")));
+        X509Certificate crt = ca.cloneUserCertificate(keyPair.getPublic(), FakeEstEIDCA.holder2pem(FakeEstEIDCA.getRealCert("sk-auth-ecc.pem")));
         System.out.println(CLI.crt2pem(crt));
 
     }
