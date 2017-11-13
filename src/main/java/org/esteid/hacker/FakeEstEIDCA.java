@@ -95,8 +95,8 @@ public class FakeEstEIDCA {
         return rootCert;
     }
 
-    private X509CertificateHolder getRealCert(String path) throws IOException {
-        try (PEMParser pem = new PEMParser(new InputStreamReader(getClass().getResourceAsStream(path), "UTF-8"))) {
+    static X509CertificateHolder getRealCert(String path) throws IOException {
+        try (PEMParser pem = new PEMParser(new InputStreamReader(FakeEstEIDCA.class.getResourceAsStream(path), "UTF-8"))) {
             X509CertificateHolder crt = (X509CertificateHolder) pem.readObject();
             return crt;
         }
@@ -178,6 +178,9 @@ public class FakeEstEIDCA {
     }
 
     private X509Certificate cloneUserCertificate(RSAPublicKey pubkey, X509Certificate cert) throws OperatorCreationException, CertificateException, IOException {
+        if (pubkey.getModulus().bitLength() != 2048) {
+            throw new IllegalArgumentException("Key must be 2048b RSA");
+        }
         X509CertificateHolder holder = new X509CertificateHolder(cert.getEncoded());
         // Clone everything
         JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(holder.getIssuer(), cert.getSerialNumber(), cert.getNotBefore(), cert.getNotAfter(), holder.getSubject(), pubkey);
@@ -202,6 +205,9 @@ public class FakeEstEIDCA {
                                                     String idcode, String email, Date from, Date to) throws InvalidKeyException, ParseException, IOException, IllegalStateException,
             NoSuchProviderException, NoSuchAlgorithmException, SignatureException, CertificateException, OperatorCreationException {
 
+        if (pubkey.getModulus().bitLength() != 2048) {
+            throw new IllegalArgumentException("Key must be 2048b RSA");
+        }
         Date startDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse("2017-01-01");
         Date endDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse("2017-12-31");
 
@@ -260,6 +266,10 @@ public class FakeEstEIDCA {
 
     // ECC versions
     private X509Certificate cloneUserCertificate(ECPublicKey pubkey, X509Certificate cert) throws OperatorCreationException, CertificateException, IOException {
+        // FIXME: check actual curve
+        if (pubkey.getParams().getCurve().getField().getFieldSize() != 384) {
+            throw new IllegalArgumentException("Must be secp384r1 key!");
+        }
         X509CertificateHolder holder = new X509CertificateHolder(cert.getEncoded());
         // Clone everything
         JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(holder.getIssuer(), cert.getSerialNumber(), cert.getNotBefore(), cert.getNotAfter(), holder.getSubject(), pubkey);
@@ -361,5 +371,9 @@ public class FakeEstEIDCA {
             esteidKey = (RSAPrivateCrtKey) keystore.getKey(esteid, password);
             esteidCert = (X509Certificate) keystore.getCertificate(esteid);
         }
+    }
+
+    public static X509Certificate holder2pem(X509CertificateHolder holder) throws CertificateException {
+        return new JcaX509CertificateConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME).getCertificate(holder);
     }
 }

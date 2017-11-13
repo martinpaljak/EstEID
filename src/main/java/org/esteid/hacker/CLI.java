@@ -20,7 +20,6 @@ package org.esteid.hacker;
 import apdu4j.HexUtils;
 import apdu4j.LoggingCardTerminal;
 import apdu4j.TerminalManager;
-import javacard.framework.AID;
 import jnasmartcardio.Smartcardio.EstablishContextException;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
@@ -34,8 +33,6 @@ import org.esteid.EstEID.CardType;
 import org.esteid.EstEID.PIN;
 import org.esteid.EstEID.PersonalData;
 import pro.javacard.gp.GlobalPlatform;
-import pro.javacard.vre.VJCREProvider;
-import pro.javacard.vre.VRE;
 
 import javax.smartcardio.*;
 import java.io.*;
@@ -252,20 +249,20 @@ public class CLI {
         CardTerminal term;
 
         try {
-            if (args.has(OPT_EMULATE)) {
-                // Load FakeEstEIDManagerApplet into vJCRE emulator
-                VRE vre = VRE.getInstance();
-                AID aid = AID.fromBytes(HexUtils.hex2bin(EstEID.AID));
-                // Load the class from specified JAR.
-                final Class<?> cls;
-                try (URLClassLoader loader = new URLClassLoader(new URL[]{((File) args.valueOf(OPT_EMULATE)).toURI().toURL()}, CLI.class.getClassLoader())) {
-                    cls = loader.loadClass("org.esteid.applet.FakeEstEID");
-                }
-                vre.load(cls, aid);
-                vre.install(aid, true);
-                // Establish connection to the applet
-                term = TerminalFactory.getInstance("PC/SC", vre, new VJCREProvider()).terminals().list().get(0);
-            } else {
+//            if (args.has(OPT_EMULATE)) {
+//                // Load FakeEstEIDManagerApplet into vJCRE emulator
+//                VRE vre = VRE.getInstance();
+//                AID aid = AID.fromBytes(HexUtils.hex2bin(EstEID.AID));
+//                // Load the class from specified JAR.
+//                final Class<?> cls;
+//                try (URLClassLoader loader = new URLClassLoader(new URL[]{((File) args.valueOf(OPT_EMULATE)).toURI().toURL()}, CLI.class.getClassLoader())) {
+//                    cls = loader.loadClass("org.esteid.applet.FakeEstEID");
+//                }
+//                vre.load(cls, aid);
+//                vre.install(aid, true);
+//                // Establish connection to the applet
+//                term = TerminalFactory.getInstance("PC/SC", vre, new VJCREProvider()).terminals().list().get(0);
+//            } else {
                 if (args.has(OPT_LIST)) {
                     // Use the default
                     TerminalFactory tf = TerminalManager.getTerminalFactory(null);
@@ -285,7 +282,7 @@ public class CLI {
                 }
                 // Connect to the found reader.
                 term = TerminalManager.getTheReader(null);
-            }
+
 
             if (args.has(OPT_DEBUG)) {
                 term = LoggingCardTerminal.getInstance(term);
@@ -361,7 +358,7 @@ public class CLI {
                     GlobalPlatform gp = mgr.openGlobalPlatform();
                     mgr.installApplet(gp);
                     // Generate keys.
-                    SecureChannel sc = SecureChannel.getInstance(gp.getChannel());
+                    SecureChannel sc = SecureChannel.getInstance(card.getBasicChannel()); // FIXME: expose channel
                     sc.mutualAuthenticate(mgr.getCMK(0), 0);
 
                     mgr.writePersoFile(sc);

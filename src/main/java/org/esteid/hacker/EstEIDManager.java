@@ -30,16 +30,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import apdu4j.HexUtils;
-import pro.javacard.gp.CapFile;
-import pro.javacard.gp.GPException;
-import pro.javacard.gp.GPKeySet.GPKey;
+import pro.javacard.gp.*;
+import pro.javacard.gp.CAPFile;
+import pro.javacard.gp.GPKey;
 import pro.javacard.gp.GPRegistryEntry.Privilege;
 import pro.javacard.gp.GPRegistryEntry.Privileges;
-import pro.javacard.gp.GPUtils;
-import pro.javacard.gp.GlobalPlatform;
 import pro.javacard.gp.GlobalPlatform.APDUMode;
-import pro.javacard.gp.PlaintextKeys;
-import pro.javacard.gp.SessionKeyProvider;
 
 public class EstEIDManager {
 
@@ -191,10 +187,9 @@ public class EstEIDManager {
 	public static GlobalPlatform open_gp(CardChannel c, Properties p) throws CardException, GPException {
 		byte [] gpkey = HexUtils.hex2bin(p.getProperty("GPKEY"));
 		// Open GlobalPlatform
-		GlobalPlatform gp = new GlobalPlatform(c);
-		gp.select(null);
-		SessionKeyProvider kp = PlaintextKeys.fromMasterKey(new GPKey(gpkey, GPKey.Type.DES3));
-		gp.openSecureChannel(kp, null, 0, EnumSet.of(APDUMode.ENC));
+		GlobalPlatform gp = GlobalPlatform.discover(c);
+		PlaintextKeys keys = PlaintextKeys.fromMasterKey(new GPKey(gpkey, GPKey.Type.DES3));
+		gp.openSecureChannel(keys, null, 0, EnumSet.of(APDUMode.ENC));
 		return gp;
 	}
 
@@ -220,7 +215,7 @@ public class EstEIDManager {
 
 	public static void install_applet(GlobalPlatform gp, Properties p) throws CardException, GPException, IOException {
 		// Load the CAP file.
-		CapFile cap = new CapFile(new FileInputStream(p.getProperty("APPLET")));
+		CAPFile cap = new CAPFile(new FileInputStream(p.getProperty("APPLET")));
 		try {
 			// Delete existing instance if present
 			gp.deleteAID(cap.getPackageAID(), true);
@@ -246,7 +241,8 @@ public class EstEIDManager {
 		gp.installAndMakeSelectable(cap.getPackageAID(), cap.getAppletAIDs().get(0), null, privs, instparams, null);
 
 		// Select installed applet
-		gp.getChannel().transmit(select_aid_apdu(cap.getAppletAIDs().get(0).getBytes()));
+		// FIXME: handling of channel via GP.
+		// getChannel().transmit(select_aid_apdu(cap.getAppletAIDs().get(0).getBytes()));
 	}
 
 	public static byte[] installation_parameters(byte[] cmk_perso, byte[] cmk_pin, byte[] cmk_key, byte[] cmk_cert, byte[] pin1, byte [] pin2, byte [] puk) {
