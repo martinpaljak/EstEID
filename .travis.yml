@@ -29,6 +29,7 @@ addons:
     branch_pattern: coverity
 deploy:
   provider: releases
+  prerelease: true
   file:
   - esteid-app.jar
   - esteid.exe
