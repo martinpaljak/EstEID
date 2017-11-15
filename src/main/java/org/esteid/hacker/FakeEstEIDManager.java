@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014-2016 Martin Paljak
+ * Copyright (C) 2014-2017 Martin Paljak
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
