@@ -631,7 +631,7 @@ public final class EstEID {
 
         private final int rec;
 
-        private PersonalData(int recno) {
+        PersonalData(int recno) {
             this.rec = recno;
         }
 

@@ -33,6 +33,8 @@ import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.math.BigInteger;
@@ -51,6 +53,7 @@ import java.util.Locale;
 
 // Look-alikes for sk.ee root, intermediate and end-user certificates.
 public class FakeEstEIDCA {
+    private final Logger log = LoggerFactory.getLogger(FakeEstEIDCA.class);
 
     // KeyStore constants
     private static final char[] password = "infected".toCharArray();
@@ -71,7 +74,7 @@ public class FakeEstEIDCA {
 
     public void generate() throws NoSuchAlgorithmException, InvalidKeyException, IllegalStateException, NoSuchProviderException,
             SignatureException, IOException, ParseException, OperatorCreationException, CertificateException {
-        System.out.println("Generating CA ...");
+        log.info("Generating CA ...");
         // Root
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA", BouncyCastleProvider.PROVIDER_NAME);
         keyGen.initialize(2048);
@@ -238,8 +241,8 @@ public class FakeEstEIDCA {
         } else {
             real = getRealCert("sk-auth.pem");
         }
-        System.out.println("Generating from subject: " + real.getSubject());
-        System.out.println("Generating subject: " + new X500Name(subject).toString());
+        log.trace("Generating from subject: " + real.getSubject());
+        log.trace("Generating subject: " + new X500Name(subject).toString());
 
         JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(real.getIssuer(), serial, startDate, endDate, new X500Name(subject), pubkey);
 
@@ -323,8 +326,8 @@ public class FakeEstEIDCA {
         } else {
             real = getRealCert("sk-auth-ecc.pem");
         }
-        System.out.println("Generating from subject: " + real.getSubject());
-        System.out.println("Generating subject: " + new X500Name(subject).toString());
+        log.trace("Generating from subject: " + real.getSubject());
+        log.trace("Generating subject: " + new X500Name(subject).toString());
 
         JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(real.getIssuer(), serial, startDate, endDate, new X500Name(subject), pubkey);
 
