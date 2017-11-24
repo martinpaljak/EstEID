@@ -36,8 +36,6 @@ import pro.javacard.gp.GlobalPlatform;
 
 import javax.smartcardio.*;
 import java.io.*;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.charset.Charset;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
@@ -263,26 +261,32 @@ public class CLI {
 //                // Establish connection to the applet
 //                term = TerminalFactory.getInstance("PC/SC", vre, new VJCREProvider()).terminals().list().get(0);
 //            } else {
-                if (args.has(OPT_LIST)) {
-                    // Use the default
-                    TerminalFactory tf = TerminalManager.getTerminalFactory(null);
-                    CardTerminals terms = tf.terminals();
-                    System.out.println("Found terminals: " + terms.list().size());
-                    for (CardTerminal t : terms.list()) {
-                        String s = "";
+            if (args.has(OPT_LIST)) {
+                // Use the default
+                TerminalFactory tf = TerminalManager.getTerminalFactory(null);
+                CardTerminals terms = tf.terminals();
+                for (CardTerminal t : terms.list()) {
+                    String ts = "[ ]";
+                    String s = "";
+                    try {
                         if (t.isCardPresent()) {
-                            s = ": not EstEID";
+                            ts = "[*]";
+                            s = "not EstEID";
                             CardType ct = EstEID.identify(t);
                             if (ct != null) {
-                                s = ": " + ct.toString();
+                                s = ct.toString();
                             }
                         }
-                        System.out.println((t.isCardPresent() ? "[*] " : "[ ] ") + t.getName() + s);
+                    } catch (CardException e) {
+                        if (TerminalManager.getExceptionMessage(e).equals("SCARD_E_SHARING_VIOLATION")) {
+                            ts = "[X]";
+                        }
                     }
+                    System.out.println(ts + " " + t.getName() + ": " + s);
                 }
-                // Connect to the found reader.
-                term = TerminalManager.getTheReader(null);
-
+            }
+            // Connect to the EstEID card // FIXME: this breaks generic javacard cloning
+            term = EstEID.get();
 
             if (args.has(OPT_DEBUG)) {
                 term = LoggingCardTerminal.getInstance(term);
@@ -511,7 +515,7 @@ public class CLI {
                         System.out.println("Cardholder: " + esteid.getPersonalData(PersonalData.GIVEN_NAMES1) + " " + esteid.getPersonalData(PersonalData.SURNAME));
                     }
                     X509Certificate authcert = esteid.readAuthCert();
-                    System.out.println("Certificate subject: " + authcert.getSubjectDN());
+                    System.out.println("Certificate (" + authcert.getPublicKey().getAlgorithm() + ") subject: " + authcert.getSubjectDN());
                 }
             }
 

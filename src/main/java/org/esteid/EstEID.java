@@ -22,6 +22,12 @@
 package org.esteid;
 
 import apdu4j.HexUtils;
+import apdu4j.TerminalManager;
+import org.bouncycastle.asn1.ASN1EncodableVector;
+import org.bouncycastle.asn1.ASN1Integer;
+import org.bouncycastle.asn1.DEROutputStream;
+import org.bouncycastle.asn1.DERSequence;
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 
 import javax.crypto.Cipher;
 import javax.smartcardio.*;
@@ -31,9 +37,11 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.security.Signature;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.security.interfaces.ECPublicKey;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -90,11 +98,12 @@ public final class EstEID {
     public final static int chunksize = 250;
 
     public static final String AID = "D23300000045737445494420763335";
-
+    public static final Map<ATR, CardType> knownATRs;
     // AID of modern JavaCard app (FakeEstEID et al) National prefix of Estonia + "EstEID v3.5"
     private static final byte[] aid = HexUtils.hex2bin(AID);
 
-    public static final Map<ATR, CardType> knownATRs;
+    private static final SecureRandom rnd;
+
     static {
         Map<ATR, CardType> atrs = new HashMap<>();
         atrs.put(new ATR(HexUtils.hex2bin("3bfe9400ff80b1fa451f034573744549442076657220312e3043")), CardType.MICARDO);
@@ -104,7 +113,10 @@ public final class EstEID {
         atrs.put(new ATR(HexUtils.hex2bin("3b6e00004573744549442076657220312e30")), CardType.DigiID);
         atrs.put(new ATR(HexUtils.hex2bin("3bfe1800008031fe454573744549442076657220312e30a8")), CardType.JavaCard2011);
         atrs.put(new ATR(HexUtils.hex2bin("3bfe1800008031fe45803180664090a4162a00830f9000ef")), CardType.JavaCard2011);
+        atrs.put(new ATR(HexUtils.hex2bin("3BFA1800008031FE45FE654944202F20504B4903")), CardType.JavaCard2011); // Digi-ID 2017 ECC
         knownATRs = Collections.unmodifiableMap(atrs);
+        rnd = new SecureRandom();
+        rnd.nextBytes(new byte[2]); // Seed and drop
     }
 
     // Instance fields
@@ -118,6 +130,11 @@ public final class EstEID {
 
     public static EstEID getInstance(CardChannel c) {
         return new EstEID(c);
+    }
+
+
+    public static CardTerminal get() throws CardException, NoSuchAlgorithmException {
+        return TerminalManager.getByATR(knownATRs.keySet());
     }
 
     public static EstEID start(CardChannel c) throws CardException, EstEIDException {
@@ -220,6 +237,22 @@ public final class EstEID {
             version = "unknown-error";
         }
         return version;
+    }
+
+    public static byte[] rs2der(byte[] c) {
+        try {
+            byte[] r = Arrays.copyOfRange(c, 0, c.length / 2);
+            byte[] s = Arrays.copyOfRange(c, c.length / 2, c.length);
+            ByteArrayOutputStream bo = new ByteArrayOutputStream();
+            DEROutputStream ders = new DEROutputStream(bo);
+            ASN1EncodableVector v = new ASN1EncodableVector();
+            v.add(new ASN1Integer(new BigInteger(1, r)));
+            v.add(new ASN1Integer(new BigInteger(1, s)));
+            ders.writeObject(new DERSequence(v));
+            return bo.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Can not convert");
+        }
     }
 
     public CardType getType() {
@@ -415,6 +448,21 @@ public final class EstEID {
         }
     }
 
+    public byte[] dh(ECPublicKey key, String pin) throws WrongPINException, CardException, EstEIDException {
+        // FIXME: check that point is on curve of cert
+        SubjectPublicKeyInfo spk = SubjectPublicKeyInfo.getInstance(key.getEncoded());
+        return dh(spk.getPublicKeyData().getBytes(), pin);
+    }
+
+    public byte[] dh(byte[] data, String pin) throws WrongPINException, CardException, EstEIDException {
+        select(FID_3F00);
+        select(FID_EEEE);
+        verify(PIN1, pin);
+        data = org.bouncycastle.util.Arrays.concatenate(new byte[]{(byte) 0xA6, 0x66, 0x7F, 0x49, 0x63, (byte) 0x86, 0x61}, data);
+        CommandAPDU cmd = new CommandAPDU(0x00, INS_PERFORM_SECURITY_OPERATION, P1_PSO_DECRYPT, P2_PSO_DECRYPT, data, 256);
+        return check(transmit(cmd)).getData();
+    }
+
     // Transport related
     public CardChannel getChannel() {
         return channel;
@@ -436,44 +484,78 @@ public final class EstEID {
         System.out.println("Testing certificates and crypto ...");
 
         try {
-            // Verify on-card keys vs certificates
-            Cipher verify_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-            SecureRandom r = SecureRandom.getInstance("SHA1PRNG");
-            byte[] rnd = new byte[20];
 
             // Authentication key
             X509Certificate authcert = readAuthCert();
             System.out.println("Auth cert: " + authcert.getSubjectDN());
 
-            r.nextBytes(rnd);
-            verify_cipher.init(Cipher.DECRYPT_MODE, authcert.getPublicKey());
-            byte[] result = verify_cipher.doFinal(authenticate(rnd, pin1));
-            if (!java.util.Arrays.equals(rnd, result)) {
-                throw new EstEIDException("Card and auth key don't match!");
-            } else {
-                System.out.println("ENCRYPT: OK");
-            }
+            if (authcert.getPublicKey().getAlgorithm().equals("EC")) {
+                Signature v = Signature.getInstance("NONEwithECDSA", "BC");
+                byte[] hash = new byte[0x30];
+                rnd.nextBytes(hash);
 
-            r.nextBytes(rnd);
-            verify_cipher.init(Cipher.ENCRYPT_MODE, authcert.getPublicKey());
-            result = verify_cipher.doFinal(rnd);
-            if (!java.util.Arrays.equals(rnd, decrypt(result, pin1))) {
-                throw new EstEIDException("Card and auth key don't match on decryption!");
-            } else {
-                System.out.println("DECRYPT: OK");
+                v.initVerify(authcert.getPublicKey());
+                v.update(hash);
+                if (!v.verify(rs2der(authenticate(hash, pin1)))) {
+                    throw new EstEIDException("Card and auth key don't match on authentication!");
+                } else {
+                    System.out.println("AUTHENTICATE: OK");
+                }
+
+                // TODO: dh
+            } else if (authcert.getPublicKey().getAlgorithm().equals("RSA")) {
+                // Verify on-card keys vs certificates
+                Cipher verify_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+                byte[] hash = new byte[20];
+
+                rnd.nextBytes(hash);
+                verify_cipher.init(Cipher.DECRYPT_MODE, authcert.getPublicKey());
+                byte[] result = verify_cipher.doFinal(authenticate(hash, pin1));
+                if (!java.util.Arrays.equals(hash, result)) {
+                    throw new EstEIDException("Card and auth key don't match!");
+                } else {
+                    System.out.println("ENCRYPT: OK");
+                }
+
+                rnd.nextBytes(hash);
+                verify_cipher.init(Cipher.ENCRYPT_MODE, authcert.getPublicKey());
+                result = verify_cipher.doFinal(hash);
+                if (!java.util.Arrays.equals(hash, decrypt(result, pin1))) {
+                    throw new EstEIDException("Card and auth key don't match on decryption!");
+                } else {
+                    System.out.println("DECRYPT: OK");
+                }
             }
 
             // Signature key
             X509Certificate signcert = readSignCert();
             System.out.println("Sign cert: " + signcert.getSubjectDN());
 
-            r.nextBytes(rnd);
-            verify_cipher.init(Cipher.DECRYPT_MODE, signcert.getPublicKey());
-            result = verify_cipher.doFinal(sign(rnd, pin2));
-            if (!java.util.Arrays.equals(rnd, result)) {
-                throw new EstEIDException("Card and sign key don't match!");
-            } else {
-                System.out.println("ENCRYPT: OK");
+            if (signcert.getPublicKey().getAlgorithm().equals("EC")) {
+                Signature v = Signature.getInstance("NONEwithECDSA", "BC");
+                byte[] hash = new byte[0x30];
+                rnd.nextBytes(hash);
+                v.initVerify(signcert.getPublicKey());
+                v.update(hash);
+                if (!v.verify(rs2der(sign(hash, pin2)))) {
+                    throw new EstEIDException("Card and sign key don't match on signing!");
+                } else {
+                    System.out.println("SIGN: OK");
+                }
+            } else if (signcert.getPublicKey().getAlgorithm().equals("RSA")) {
+                // TODO: different hash sizes
+                // Verify on-card keys vs certificates
+                Cipher verify_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+                SecureRandom r = SecureRandom.getInstance("SHA1PRNG");
+                byte[] rnd = new byte[20];
+                r.nextBytes(rnd);
+                verify_cipher.init(Cipher.DECRYPT_MODE, signcert.getPublicKey());
+                byte[] result = verify_cipher.doFinal(sign(rnd, pin2));
+                if (!java.util.Arrays.equals(rnd, result)) {
+                    throw new EstEIDException("Card and sign key don't match on signing!");
+                } else {
+                    System.out.println("SIGN: OK");
+                }
             }
         } catch (GeneralSecurityException e) {
             System.out.println("FAILURE");
