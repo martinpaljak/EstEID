@@ -38,24 +38,28 @@ import java.util.Map;
 public final class Legacy {
 
     static {
-        // Add BouncyCastle if not present
+        // Add BouncyCastle if not present, used for DESede/CBC/NoPadding
         if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
-            Security.insertProviderAt(new BouncyCastleProvider(), 1);
+            Security.addProvider(new BouncyCastleProvider());
         }
     }
 
     /**
      * Given a HEX string, converts it to pure numbers.
+     * <p>
+     * FIXME: specification source
      *
-     * @param s
-     * @return
+     * @param s hex string
+     * @return a string containing only numbers
      */
-    private static String hex2numbers(String s) {
+    public static String hex2numbers(String s) {
         return s.toUpperCase().replace('A', '0').replace('B', '1').replace('C', '2').replace('D', '3').replace('E', '4').replace('F', '5');
     }
 
     /**
      * Given a CMK key and PIN envelope number, return a Map of PIN codes
+     * <p>
+     * FIXME: specification source
      *
      * @param cmk      CMK master key (16 bytes 2 key 3DES)
      * @param envelope number
@@ -63,8 +67,12 @@ public final class Legacy {
      */
     public static Map<String, String> pins_from_cmk_and_envelope(byte[] cmk, String envelope) {
         byte[] data = envelope.getBytes(StandardCharsets.US_ASCII);
+        // Derive per-envelope key
         byte[] key = cgram(cmk, data);
-        Map<String, String> pins = string2pins(hex2numbers(HexUtils.bin2hex(cgram(key, data))));
+        // Derive PIN codes
+        byte[] pinmaterial = cgram(key, data);
+        // Hexlify and numerify PIN material
+        Map<String, String> pins = string2pins(hex2numbers(HexUtils.bin2hex(pinmaterial)));
         return pins;
     }
 
@@ -85,7 +93,7 @@ public final class Legacy {
      */
     public static byte[] cgram(byte[] key, byte[] data) {
         try {
-            Cipher cipher = Cipher.getInstance("DESede/CBC/NoPadding", "BC");
+            Cipher cipher = Cipher.getInstance("DESede/CBC/NoPadding", BouncyCastleProvider.PROVIDER_NAME);
             cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "DESede"), new IvParameterSpec(new byte[8]));
             byte[] digest = MessageDigest.getInstance("SHA-1").digest(data);
             return cipher.doFinal(digest, 0, 16);

@@ -21,8 +21,16 @@
  */
 package org.esteid.sk;
 
+import org.bouncycastle.util.encoders.Hex;
+
+import javax.naming.NamingException;
+import javax.naming.ldap.LdapName;
+import javax.naming.ldap.Rdn;
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateEncodingException;
+import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -30,6 +38,21 @@ import java.util.Collection;
 import java.util.List;
 
 public final class CertificateHelpers {
+
+    public static String getCN(X509Certificate c) throws CertificateParsingException {
+        try {
+            LdapName ldapDN = new LdapName(c.getSubjectX500Principal().getName());
+            for (Rdn rdn : ldapDN.getRdns()) {
+                if (rdn.getType().equals("CN"))
+                    return rdn.getValue().toString();
+            }
+            // If the certificate does not have CN, make a hash of the certificate
+            // This way we always return something if we have a valid certificate
+            return Hex.toHexString(MessageDigest.getInstance("SHA-256").digest(c.getEncoded()));
+        } catch (NamingException | NoSuchAlgorithmException | CertificateEncodingException e) {
+            throw new CertificateParsingException("Could not fetch common name from certificate", e);
+        }
+    }
 
     public static String crt2pem(X509Certificate c) throws IOException {
         try {

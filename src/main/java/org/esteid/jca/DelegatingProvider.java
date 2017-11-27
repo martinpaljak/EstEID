@@ -21,6 +21,9 @@
  */
 package org.esteid.jca;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.net.ssl.X509ExtendedKeyManager;
 import java.io.ByteArrayOutputStream;
 import java.net.Socket;
@@ -29,13 +32,14 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
 public final class DelegatingProvider extends Provider {
+    private static final Logger log = LoggerFactory.getLogger(DelegatingProvider.class);
     private static final String ALIAS = "DelegatedAlias";
 
     private final AbstractDelegate delegate;
     private X509Certificate cert;
 
     protected DelegatingProvider(AbstractDelegate delegate) {
-        super("DelegatedKey", 0.1d, "Indirect access to a certificate and key");
+        super("DelegatedKey", 0.1d, "Indirect access to a certificate and key for signing purposes");
         this.delegate = delegate;
 
         putService(new DelegatedSignatureService(this, "NONEwithRSA"));
@@ -46,6 +50,8 @@ public final class DelegatingProvider extends Provider {
     }
 
     public static DelegatingProvider fromDelegate(AbstractDelegate delegate) {
+        if (delegate == null)
+            return null;
         return new DelegatingProvider(delegate);
     }
 
@@ -55,6 +61,7 @@ public final class DelegatingProvider extends Provider {
                 cert = delegate.getCertificate();
             }
         } catch (CertificateException e) {
+            log.warn("Failed to read certificate: {}", e.getMessage());
             throw new RuntimeException("Could not read certificate", e);
         }
 
@@ -110,6 +117,17 @@ public final class DelegatingProvider extends Provider {
                 }
             }
         };
+    }
+
+    // XXX: Just to silence findbugs
+    @Override
+    public boolean equals(Object o) {
+        return super.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
     }
 
     static final class DelegatedSignatureService extends Service {
@@ -210,15 +228,5 @@ public final class DelegatingProvider extends Provider {
         public byte[] getEncoded() {
             return new byte[0];
         }
-    }
-
-    // XXX: Just to silence findbugs
-    @Override
-    public boolean equals(Object o) {
-        return super.equals(o);
-    }
-    @Override
-    public int hashCode() {
-        return super.hashCode();
     }
 }

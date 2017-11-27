@@ -2,10 +2,13 @@ import apdu4j.HexUtils;
 import org.esteid.jca.CardDelegate;
 import org.esteid.jca.DelegatingProvider;
 import org.esteid.jca.NotificationInterface;
+import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import javax.net.ssl.X509KeyManager;
+import javax.smartcardio.CardException;
+import java.security.GeneralSecurityException;
 import java.security.PrivateKey;
 import java.security.Security;
 import java.security.Signature;
@@ -29,8 +32,10 @@ public class TestCardProvider {
 
     @Test
     @Ignore
-    public void testCardProvider() throws Exception {
+    public void testCardProvider() throws GeneralSecurityException, CardException {
         DelegatingProvider cp = DelegatingProvider.fromDelegate(CardDelegate.any(false, CONSOLE));
+        Assume.assumeNotNull(cp);
+
         Security.insertProviderAt(cp, 0);
         X509KeyManager km = cp.getKeyManager();
 

@@ -22,12 +22,16 @@
 package org.esteid;
 
 import apdu4j.HexUtils;
+import apdu4j.SCard;
 import apdu4j.TerminalManager;
 import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.DEROutputStream;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
+import org.esteid.sk.CertificateHelpers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.crypto.Cipher;
 import javax.smartcardio.*;
@@ -40,41 +44,34 @@ import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
+import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.ECPublicKey;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 // Instance of this class keeps state and throws EstEIDException if the response from card is not what it is supposed to be.
 // Static methods can be used in a stateless manner.
 // Methods throw CardException if card communication fails.
 // This class requires some love.
-public final class EstEID {
+public final class EstEID implements AutoCloseable {
 
     // Commands
     public final static int INS_SELECT = 0xA4;
     public final static int INS_READ_BINARY = 0xB0;
     public final static int INS_READ_RECORD = 0xB2;
-
     public final static int INS_VERIFY = 0x20;
     public final static int INS_CHANGE_REFERENCE_DATA = 0x24;
     public final static int INS_RESET_RETRY_COUNTER = 0x2C;
-
     public final static int INS_GET_DATA = 0xCA;
-
     public final static int INS_MANAGE_SECURITY_ENVIRONMENT = 0x22;
     public final static int INS_PERFORM_SECURITY_OPERATION = 0x2A;
     public final static int INS_INTERNAL_AUTHENTICATE = 0x88;
-
     public final static int P1P2_PSO_SIGN = 0x9E9A;
     public final static int P1_PSO_SIGN = 0x9E;
     public final static int P2_PSO_SIGN = 0x9A;
     public final static int P1P2_PSO_DECRYPT = 0x8086;
     public final static int P1_PSO_DECRYPT = 0x80;
     public final static int P2_PSO_DECRYPT = 0x86;
-
     // File identifiers
     public final static int FID_3F00 = 0x3F00;
     public final static int FID_0013 = 0x0013;
@@ -88,17 +85,15 @@ public final class EstEID {
     public static final PIN PIN1 = PIN.PIN1;
     public static final PIN PIN2 = PIN.PIN2;
     public static final PIN PUK = PIN.PUK;
-
     // default test card PIN codes from envelope "1" ("00000000001")
     public static final String PIN1String = "0090";
     public static final String PIN2String = "01497";
     public static final String PUKString = "17258403";
-
     // should be 255 all the time!
     public final static int chunksize = 250;
-
     public static final String AID = "D23300000045737445494420763335";
     public static final Map<ATR, CardType> knownATRs;
+    private static final Logger log = LoggerFactory.getLogger(EstEID.class);
     // AID of modern JavaCard app (FakeEstEID et al) National prefix of Estonia + "EstEID v3.5"
     private static final byte[] aid = HexUtils.hex2bin(AID);
 
@@ -119,6 +114,9 @@ public final class EstEID {
         rnd.nextBytes(new byte[2]); // Seed and drop
     }
 
+    private X509Certificate authCert;
+    private X509Certificate signCert;
+    private Card card = null;
     // Instance fields
     private CardChannel channel = null;
     private CardType type = null;
@@ -128,14 +126,141 @@ public final class EstEID {
         channel = c;
     }
 
+    private EstEID(Card card) {
+        this(card.getBasicChannel());
+        this.card = card;
+    }
+
     public static EstEID getInstance(CardChannel c) {
         return new EstEID(c);
     }
 
 
-    public static CardTerminal get() throws CardException, NoSuchAlgorithmException {
-        return TerminalManager.getByATR(knownATRs.keySet());
+    /**
+     * Locates a CardTerminal that contains an EstEID card, based on ATR
+     * If there are multiple terminals, asks user for a choise (assumes Console)
+     *
+     * @return the CardTerminal that contains an EstEID card or null, if such terminal does not exist
+     * @throws CardException if
+     */
+    public static CardTerminal getTerminal() throws CardException {
+        final List<CardTerminal> terms;
+        try {
+            terms = TerminalManager.byATR(knownATRs.keySet());
+        } catch (NoSuchAlgorithmException e) {
+            return null;
+            //throw new CardNotPresentException("PC/SC not available", e);
+        }
+        if (terms.size() == 0)
+            return null;
+        if (terms.size() == 1)
+            return terms.get(0);
+
+        throw new IllegalStateException("Currently only one terminal is supported");
+
+//        System.out.println("Choose reader: ");
+//        int i = 0;
+//        for (CardTerminal t : terms) {
+//            Card c = null;
+//            try {
+//                c = t.connect("*");
+//                System.out.println(i + ". " + t.getName() + ": " + identify(c));
+//            } catch (CardException | EstEIDException e) {
+//                // Ignore at this time
+//            } finally {
+//                if (c != null)
+//                    c.disconnect(false);
+//            }
+//            i++;
+//        }
+//        // TODO: select
+//        return terms.get(0);
     }
+
+
+    public static EstEID locateOneOf(Collection<X509Certificate> certs) throws CardException, NoSuchAlgorithmException, EstEIDException {
+        final List<CardTerminal> terms = TerminalManager.byATR(knownATRs.keySet());
+        for (CardTerminal t : terms) {
+            final Card c;
+            try {
+                c = t.connect("*");
+            } catch (CardException e) {
+                if (TerminalManager.getExceptionMessage(e).equals(SCard.SCARD_E_SHARING_VIOLATION)) {
+                    // exclusive, ignore
+                    continue;
+                }
+                throw e;
+            }
+            EstEID e = new EstEID(c);
+
+            X509Certificate a = e.readAuthCert();
+            for (X509Certificate x : certs) {
+                if (x.equals(a))
+                    return e;
+            }
+
+            X509Certificate s = e.readSignCert();
+            for (X509Certificate x : certs) {
+                if (x.equals(s))
+                    return e;
+            }
+            c.disconnect(false);
+        }
+        return null;
+    }
+
+    public static EstEID anyCard() throws CardException, CertificateParsingException, NoSuchAlgorithmException, EstEIDException {
+        ArrayList<AutoCloseable> toClose = new ArrayList<>();
+        ArrayList<EstEID> selection = new ArrayList<>();
+        final List<CardTerminal> terms = TerminalManager.byATR(knownATRs.keySet());
+        try {
+            for (CardTerminal t : terms) {
+                final Card c;
+                try {
+                    c = t.connect("*");
+                } catch (CardException e) {
+                    if (TerminalManager.getExceptionMessage(e).equals(SCard.SCARD_E_SHARING_VIOLATION)) {
+                        // exclusive, ignore this reader
+                        continue;
+                    }
+                    throw e;
+                }
+                EstEID e = new EstEID(c);
+                selection.add(e);
+            }
+
+            if (selection.size() == 0)
+                return null;
+
+            if (selection.size() > 1) {
+                for (EstEID e : selection) {
+                    X509Certificate x = e.readAuthCert();
+                    System.out.println(selection.indexOf(e) + ": " + e);
+                }
+                // FIXME: UX robustness
+                Console console = System.console();
+                if (console == null) {
+                    throw new IllegalStateException("Need access to console");
+                }
+                String choice = console.readLine("Enter your selection: ");
+                int i = Integer.parseInt(choice);
+                if (i < 0 || i > selection.size())
+                    throw new IllegalStateException("Bad selection: " + i);
+                return selection.get(Integer.parseInt(choice));
+            } else {
+                return selection.get(0);
+            }
+        } finally {
+            for (AutoCloseable a : toClose) {
+                try {
+                    a.close();
+                } catch (Exception e) {
+                    log.warn("Failed to close: {}", e.getMessage(), e);
+                }
+            }
+        }
+    }
+
 
     public static EstEID start(CardChannel c) throws CardException, EstEIDException {
         // FIXME: Try to select AID first
@@ -145,6 +270,11 @@ public final class EstEID {
         }
         EstEIDException.check(resp);
         return getInstance(c);
+    }
+
+    public static String identify(Card c) throws CardException, EstEIDException {
+        EstEID e = EstEID.getInstance(c.getBasicChannel());
+        return e.getPersonalData(PersonalData.GIVEN_NAMES1) + "," + e.getPersonalData(PersonalData.SURNAME) + "," + e.getPersonalData(PersonalData.PERSONAL_ID);
     }
 
     public static CardType identify(CardTerminal t) throws CardException {
@@ -213,16 +343,8 @@ public final class EstEID {
         return EstEIDException.check(r);
     }
 
-    public static String hex2numbers(String s) {
-        return s.toUpperCase().replace('A', '0').replace('B', '1').replace('C', '2').replace('D', '3').replace('E', '4').replace('F', '5');
-    }
-
     static String make_random_pin(int len) {
-        try {
-            return hex2numbers(new BigInteger(len * 8, SecureRandom.getInstance("SHA1PRNG")).toString(16)).substring(0, len);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Bad environment", e);
-        }
+        return Legacy.hex2numbers(new BigInteger(len * 8, rnd).toString(16)).substring(0, len);
     }
 
     public static String getVersion() {
@@ -372,6 +494,18 @@ public final class EstEID {
         } catch (CertificateException e) {
             throw new EstEIDException("Could not parse certificate", e);
         }
+    }
+
+    public X509Certificate getAuthCert() throws CardException, EstEIDException {
+        if (authCert == null)
+            authCert = readAuthCert();
+        return authCert;
+    }
+
+    public X509Certificate getSignCert() throws CardException, EstEIDException {
+        if (signCert == null)
+            signCert = readSignCert();
+        return signCert;
     }
 
     public X509Certificate readAuthCert() throws EstEIDException, CardException {
@@ -546,12 +680,11 @@ public final class EstEID {
                 // TODO: different hash sizes
                 // Verify on-card keys vs certificates
                 Cipher verify_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-                SecureRandom r = SecureRandom.getInstance("SHA1PRNG");
-                byte[] rnd = new byte[20];
-                r.nextBytes(rnd);
+                byte[] hash = new byte[20];
+                rnd.nextBytes(hash);
                 verify_cipher.init(Cipher.DECRYPT_MODE, signcert.getPublicKey());
-                byte[] result = verify_cipher.doFinal(sign(rnd, pin2));
-                if (!java.util.Arrays.equals(rnd, result)) {
+                byte[] result = verify_cipher.doFinal(sign(hash, pin2));
+                if (!java.util.Arrays.equals(hash, result)) {
                     throw new EstEIDException("Card and sign key don't match on signing!");
                 } else {
                     System.out.println("SIGN: OK");
@@ -610,6 +743,27 @@ public final class EstEID {
         System.out.println("UNBLOCK: OK");
     }
 
+    @Override
+    public void close() {
+        if (card != null) {
+            try {
+                card.disconnect(false);
+            } catch (CardException e) {
+                log.warn("Could not disconnect: {} ", e.getMessage(), e);
+            }
+        }
+    }
+
+    @Override
+    public String toString() {
+        try {
+            X509Certificate a = getAuthCert();
+            return CertificateHelpers.getCN(a) + " (" + a.getPublicKey().getAlgorithm() + ")";
+        } catch (CardException | EstEIDException | CertificateParsingException e) {
+            return "[Errored EstEID: " + e.getMessage() + "]";
+        }
+    }
+
     // Personal data file records
     public enum PersonalData {
         SURNAME(1),
@@ -651,7 +805,7 @@ public final class EstEID {
         private final int max;
 
 
-        private PIN(int ref, int rec, int minlen, int maxlen) {
+        PIN(int ref, int rec, int minlen, int maxlen) {
             this.ref = ref;
             this.rec = rec;
             min = minlen;
@@ -669,8 +823,8 @@ public final class EstEID {
         }
     }
 
-    public static enum CardType {
-        MICARDO, DigiID, JavaCard2011, AnyJavaCard
+    public enum CardType {
+        MICARDO, DigiID, JavaCard2011, AnyJavaCard;
     }
 
     // Exceptions

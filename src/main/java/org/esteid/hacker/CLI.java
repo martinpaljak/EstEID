@@ -17,9 +17,7 @@
  */
 package org.esteid.hacker;
 
-import apdu4j.HexUtils;
-import apdu4j.LoggingCardTerminal;
-import apdu4j.TerminalManager;
+import apdu4j.*;
 import jnasmartcardio.Smartcardio.EstablishContextException;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
@@ -42,7 +40,6 @@ import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.text.SimpleDateFormat;
 import java.util.*;
-
 
 public class CLI {
     // options.
@@ -98,7 +95,7 @@ public class CLI {
         OptionParser parser = new OptionParser();
 
         // Generic options
-        parser.accepts(OPT_VERSION, "Show information about the program");
+        parser.acceptsAll(Arrays.asList("V", OPT_VERSION), "Show information about the program");
         parser.acceptsAll(Arrays.asList("h", OPT_HELP), "Show this help");
         parser.acceptsAll(Arrays.asList("d", OPT_DEBUG), "Debug (show APDU-s)");
         parser.acceptsAll(Arrays.asList("i", OPT_INFO), "Show information about the EstEID token");
@@ -189,7 +186,7 @@ public class CLI {
 
         // Do the work, based on arguments
         if (args.has(OPT_VERSION)) {
-            System.out.println("EstEID hacker " + EstEID.getVersion());
+            System.out.println("# EstEID hacker " + EstEID.getVersion() + " with apdu4j/" + SCTool.getVersion());
         }
 
         if (args.has(OPT_DEBUG)) {
@@ -278,7 +275,7 @@ public class CLI {
                             }
                         }
                     } catch (CardException e) {
-                        if (TerminalManager.getExceptionMessage(e).equals("SCARD_E_SHARING_VIOLATION")) {
+                        if (TerminalManager.getExceptionMessage(e).equals(SCard.SCARD_E_SHARING_VIOLATION)) {
                             ts = "[X]";
                         }
                     }
@@ -286,7 +283,7 @@ public class CLI {
                 }
             }
             // Connect to the EstEID card // FIXME: this breaks generic javacard cloning
-            term = EstEID.get();
+            term = EstEID.getTerminal();
 
             if (args.has(OPT_DEBUG)) {
                 term = LoggingCardTerminal.getInstance(term);

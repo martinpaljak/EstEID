@@ -49,7 +49,10 @@ public class CardDelegate extends AbstractDelegate {
     }
 
     public static CardDelegate any(boolean sign, NotificationInterface console) throws CardException {
-        CardTerminal t = TerminalManager.getTheReader();
+        CardTerminal t = EstEID.getTerminal();
+        if (t == null) {
+            return null;
+        }
         t = LoggingCardTerminal.getInstance(t);
         Card c = t.connect("*");
         return new CardDelegate(c.getBasicChannel(), sign, console == null ? CONSOLE : console);

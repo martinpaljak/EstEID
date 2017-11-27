@@ -45,7 +45,7 @@ public final class LDAP {
     // Given idcode, return a map of  certificates
     @SuppressWarnings("sunapi")
     public static Map<String, X509Certificate> query(String idcode) throws NamingException, CertificateException {
-        logger.debug("Querying LDAP for " + idcode);
+        logger.trace("Querying LDAP for " + idcode);
         Map<String, X509Certificate> result = new HashMap<>();
         LdapContext ctx = null;
         try {
@@ -75,7 +75,7 @@ public final class LDAP {
             if (ctx != null)
                 ctx.close();
         }
-        logger.debug("Returning " + result.size() + " certificates for " + idcode);
+        logger.trace("Returning " + result.size() + " certificates for " + idcode);
         return result;
     }
 

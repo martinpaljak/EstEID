@@ -53,30 +53,43 @@ import java.util.Locale;
 
 // Look-alikes for sk.ee root, intermediate and end-user certificates.
 public class FakeEstEIDCA {
-    private final Logger log = LoggerFactory.getLogger(FakeEstEIDCA.class);
-
     // KeyStore constants
     private static final char[] password = "infected".toCharArray();
     private static final String root = "root";
     private static final String esteid = "esteid";
+    private static final SecureRandom random;
 
     static {
-        // Add BouncyCastle if not present
+        random = new SecureRandom();
+        random.nextBytes(new byte[2]);
+        // Add BouncyCastle if not present, we will need it for XXX
         if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
-            Security.insertProviderAt(new BouncyCastleProvider(), 1);
+            Security.addProvider(new BouncyCastleProvider());
         }
     }
 
+    private final Logger log = LoggerFactory.getLogger(FakeEstEIDCA.class);
     private RSAPrivateCrtKey rootKey;
     private X509Certificate rootCert;
     private RSAPrivateCrtKey esteidKey;
     private X509Certificate esteidCert;
 
+    static X509CertificateHolder getRealCert(String path) throws IOException {
+        try (PEMParser pem = new PEMParser(new InputStreamReader(FakeEstEIDCA.class.getResourceAsStream(path), "UTF-8"))) {
+            X509CertificateHolder crt = (X509CertificateHolder) pem.readObject();
+            return crt;
+        }
+    }
+
+    public static X509Certificate holder2pem(X509CertificateHolder holder) throws CertificateException {
+        return new JcaX509CertificateConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME).getCertificate(holder);
+    }
+
     public void generate() throws NoSuchAlgorithmException, InvalidKeyException, IllegalStateException, NoSuchProviderException,
             SignatureException, IOException, ParseException, OperatorCreationException, CertificateException {
         log.info("Generating CA ...");
         // Root
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA", BouncyCastleProvider.PROVIDER_NAME);
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         keyGen.initialize(2048);
         KeyPair root = keyGen.generateKeyPair();
         // Intermediate
@@ -96,13 +109,6 @@ public class FakeEstEIDCA {
 
     public X509Certificate getRootCert() {
         return rootCert;
-    }
-
-    static X509CertificateHolder getRealCert(String path) throws IOException {
-        try (PEMParser pem = new PEMParser(new InputStreamReader(FakeEstEIDCA.class.getResourceAsStream(path), "UTF-8"))) {
-            X509CertificateHolder crt = (X509CertificateHolder) pem.readObject();
-            return crt;
-        }
     }
 
     private X509Certificate makeRootCert(KeyPair kp) throws InvalidKeyException, IllegalStateException, NoSuchProviderException,
@@ -203,7 +209,6 @@ public class FakeEstEIDCA {
 
     }
 
-
     private X509Certificate generateUserCertificate(RSAPublicKey pubkey, boolean signature, String firstname, String lastname,
                                                     String idcode, String email, Date from, Date to) throws InvalidKeyException, ParseException, IOException, IllegalStateException,
             NoSuchProviderException, NoSuchAlgorithmException, SignatureException, CertificateException, OperatorCreationException {
@@ -230,8 +235,7 @@ public class FakeEstEIDCA {
                 lastname, firstname, idcode);
 
         byte[] serialBytes = new byte[16];
-        SecureRandom rnd = SecureRandom.getInstance("SHA1PRNG");
-        rnd.nextBytes(serialBytes);
+        random.nextBytes(serialBytes);
         serialBytes[0] &= 0x7F; // Can't be negative
         BigInteger serial = new BigInteger(serialBytes);
 
@@ -315,8 +319,7 @@ public class FakeEstEIDCA {
                 lastname, firstname, idcode);
 
         byte[] serialBytes = new byte[16];
-        SecureRandom rnd = SecureRandom.getInstance("SHA1PRNG");
-        rnd.nextBytes(serialBytes);
+        random.nextBytes(serialBytes);
         serialBytes[0] &= 0x7F; // Can't be negative
         BigInteger serial = new BigInteger(serialBytes);
 
@@ -352,7 +355,6 @@ public class FakeEstEIDCA {
         return new JcaX509CertificateConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME).getCertificate(cert);
     }
 
-
     public void storeToFile(File f) throws KeyStoreException, NoSuchProviderException, NoSuchAlgorithmException, CertificateException,
             IOException {
         try (OutputStream out = new FileOutputStream(f)) {
@@ -374,9 +376,5 @@ public class FakeEstEIDCA {
             esteidKey = (RSAPrivateCrtKey) keystore.getKey(esteid, password);
             esteidCert = (X509Certificate) keystore.getCertificate(esteid);
         }
-    }
-
-    public static X509Certificate holder2pem(X509CertificateHolder holder) throws CertificateException {
-        return new JcaX509CertificateConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME).getCertificate(holder);
     }
 }
