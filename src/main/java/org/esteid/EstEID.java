@@ -35,19 +35,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.crypto.Cipher;
+import javax.crypto.KeyAgreement;
 import javax.smartcardio.*;
 import java.io.*;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.Signature;
+import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.ECPublicKey;
+import java.security.spec.ECGenParameterSpec;
 import java.util.*;
 
 // Instance of this class keeps state and throws EstEIDException if the response from card is not what it is supposed to be.
@@ -503,10 +502,15 @@ public final class EstEID implements AutoCloseable {
 
     private X509Certificate readCertificate(int fid) throws CardException, EstEIDException {
         try {
+            if (card != null)
+                card.beginExclusive();
             CertificateFactory cf = CertificateFactory.getInstance("X509");
             return (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(read_certificate_bytes(fid)));
         } catch (CertificateException e) {
             throw new EstEIDException("Could not parse certificate", e);
+        } finally {
+            if (card != null)
+                card.endExclusive();
         }
     }
 
@@ -551,48 +555,69 @@ public final class EstEID implements AutoCloseable {
     }
 
     public byte[] sign(byte[] data, String pin) throws WrongPINException, CardException, EstEIDException {
-        select(FID_3F00);
-        select(FID_EEEE);
-        se_restore(1);
-        verify(PIN2, pin);
-        CommandAPDU cmd = new CommandAPDU(0x00, INS_PERFORM_SECURITY_OPERATION, P1_PSO_SIGN, P2_PSO_SIGN, data, 256);
-        return check(transmit(cmd)).getData();
+        try {
+            if (card != null)
+                card.beginExclusive();
+            select(FID_3F00);
+            select(FID_EEEE);
+            se_restore(1);
+            verify(PIN2, pin);
+            CommandAPDU cmd = new CommandAPDU(0x00, INS_PERFORM_SECURITY_OPERATION, P1_PSO_SIGN, P2_PSO_SIGN, data, 256);
+            return check(transmit(cmd)).getData();
+        } finally {
+            if (card != null)
+                card.endExclusive();
+        }
     }
 
     public byte[] authenticate(byte[] data, String pin) throws WrongPINException, CardException, EstEIDException {
-        select(FID_3F00);
-        select(FID_EEEE);
-        se_restore(1);
-        verify(PIN1, pin);
-        CommandAPDU cmd = new CommandAPDU(0x00, INS_INTERNAL_AUTHENTICATE, 0x00, 0x00, data, 256);
-        return check(transmit(cmd)).getData();
+        try {
+            if (card != null)
+                card.beginExclusive();
+            select(FID_3F00);
+            select(FID_EEEE);
+            se_restore(1);
+            verify(PIN1, pin);
+            CommandAPDU cmd = new CommandAPDU(0x00, INS_INTERNAL_AUTHENTICATE, 0x00, 0x00, data, 256);
+            return check(transmit(cmd)).getData();
+        } finally {
+            if (card != null)
+                card.endExclusive();
+        }
     }
 
     public byte[] decrypt(byte[] data, String pin) throws WrongPINException, CardException, EstEIDException {
-        select(FID_3F00);
-        select(FID_EEEE);
-        se_restore(6);
-        verify(PIN1, pin);
-        // Some magic - decryption key reference
-        // TODO: discover this from FID 0x0033
-        se_keyref(0xB8, 0x1100);
-        // prepend 0
-        byte[] d = org.bouncycastle.util.Arrays.prepend(data, (byte) 0);
+        try {
+            if (card != null)
+                card.beginExclusive();
+            select(FID_3F00);
+            select(FID_EEEE);
+            se_restore(6);
+            verify(PIN1, pin);
+            // Some magic - decryption key reference
+            // TODO: discover this from FID 0x0033
+            se_keyref(0xB8, 0x1100);
+            // prepend 0
+            byte[] d = org.bouncycastle.util.Arrays.prepend(data, (byte) 0);
 
-        // The logical limit here is 255
-        if (d.length > chunksize) {
-            // split in two
-            int split = d.length / 2;
-            byte[] d1 = Arrays.copyOfRange(d, 0, split);
-            byte[] d2 = Arrays.copyOfRange(d, split, d.length);
-            // send in two parts with chaining
-            CommandAPDU cmd = new CommandAPDU(0x10, INS_PERFORM_SECURITY_OPERATION, P1_PSO_DECRYPT, P2_PSO_DECRYPT, d1, 256);
-            check(transmit(cmd));
-            cmd = new CommandAPDU(0x00, INS_PERFORM_SECURITY_OPERATION, P1_PSO_DECRYPT, P2_PSO_DECRYPT, d2, 256);
-            return check(transmit(cmd)).getData();
-        } else {
-            CommandAPDU cmd = new CommandAPDU(0x00, INS_PERFORM_SECURITY_OPERATION, P1_PSO_DECRYPT, P1_PSO_DECRYPT, d, 256);
-            return check(transmit(cmd)).getData();
+            // The logical limit here is 255
+            if (d.length > chunksize) {
+                // split in two
+                int split = d.length / 2;
+                byte[] d1 = Arrays.copyOfRange(d, 0, split);
+                byte[] d2 = Arrays.copyOfRange(d, split, d.length);
+                // send in two parts with chaining
+                CommandAPDU cmd = new CommandAPDU(0x10, INS_PERFORM_SECURITY_OPERATION, P1_PSO_DECRYPT, P2_PSO_DECRYPT, d1, 256);
+                check(transmit(cmd));
+                cmd = new CommandAPDU(0x00, INS_PERFORM_SECURITY_OPERATION, P1_PSO_DECRYPT, P2_PSO_DECRYPT, d2, 256);
+                return check(transmit(cmd)).getData();
+            } else {
+                CommandAPDU cmd = new CommandAPDU(0x00, INS_PERFORM_SECURITY_OPERATION, P1_PSO_DECRYPT, P1_PSO_DECRYPT, d, 256);
+                return check(transmit(cmd)).getData();
+            }
+        } finally {
+            if (card != null)
+                card.endExclusive();
         }
     }
 
@@ -603,12 +628,19 @@ public final class EstEID implements AutoCloseable {
     }
 
     public byte[] dh(byte[] data, String pin) throws WrongPINException, CardException, EstEIDException {
-        select(FID_3F00);
-        select(FID_EEEE);
-        verify(PIN1, pin);
-        data = org.bouncycastle.util.Arrays.concatenate(new byte[]{(byte) 0xA6, 0x66, 0x7F, 0x49, 0x63, (byte) 0x86, 0x61}, data);
-        CommandAPDU cmd = new CommandAPDU(0x00, INS_PERFORM_SECURITY_OPERATION, P1_PSO_DECRYPT, P2_PSO_DECRYPT, data, 256);
-        return check(transmit(cmd)).getData();
+        try {
+            if (card != null)
+                card.beginExclusive();
+            select(FID_3F00);
+            select(FID_EEEE);
+            verify(PIN1, pin);
+            data = org.bouncycastle.util.Arrays.concatenate(new byte[]{(byte) 0xA6, 0x66, 0x7F, 0x49, 0x63, (byte) 0x86, 0x61}, data);
+            CommandAPDU cmd = new CommandAPDU(0x00, INS_PERFORM_SECURITY_OPERATION, P1_PSO_DECRYPT, P2_PSO_DECRYPT, data, 256);
+            return check(transmit(cmd)).getData();
+        } finally {
+            if (card != null)
+                card.endExclusive();
+        }
     }
 
     // Transport related
@@ -632,7 +664,8 @@ public final class EstEID implements AutoCloseable {
         System.out.println("Testing certificates and crypto ...");
 
         try {
-
+            if (card != null)
+                card.beginExclusive();
             // Authentication key
             X509Certificate authcert = readAuthCert();
             System.out.println("Auth cert: " + authcert.getSubjectDN());
@@ -650,7 +683,21 @@ public final class EstEID implements AutoCloseable {
                     System.out.println("AUTHENTICATE: OK");
                 }
 
-                // TODO: dh
+                KeyAgreement ka = KeyAgreement.getInstance("ECDH");
+                KeyPairGenerator generator = KeyPairGenerator.getInstance("EC");
+                generator.initialize(new ECGenParameterSpec("secp384r1"));
+                KeyPair ephemeral = generator.generateKeyPair();
+
+                ka.init(ephemeral.getPrivate());
+                ka.doPhase(authcert.getPublicKey(), true);
+                byte[] host_secret = ka.generateSecret();
+                byte[] card_secret = dh((ECPublicKey) ephemeral.getPublic(), pin1);
+
+                if (!java.util.Arrays.equals(card_secret, host_secret)) {
+                    throw new EstEIDException("Card and auth key don't match!");
+                } else {
+                    System.out.println("KEY AGREEMENT: OK");
+                }
             } else if (authcert.getPublicKey().getAlgorithm().equals("RSA")) {
                 // Verify on-card keys vs certificates
                 Cipher verify_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
@@ -706,6 +753,9 @@ public final class EstEID implements AutoCloseable {
             }
         } catch (GeneralSecurityException e) {
             System.out.println("FAILURE");
+        } finally {
+            if (card != null)
+                card.endExclusive();
         }
     }
 
