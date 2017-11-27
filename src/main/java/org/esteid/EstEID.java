@@ -22,6 +22,7 @@
 package org.esteid;
 
 import apdu4j.HexUtils;
+import apdu4j.LoggingCardTerminal;
 import apdu4j.SCard;
 import apdu4j.TerminalManager;
 import org.bouncycastle.asn1.ASN1EncodableVector;
@@ -108,12 +109,13 @@ public final class EstEID implements AutoCloseable {
         atrs.put(new ATR(HexUtils.hex2bin("3b6e00004573744549442076657220312e30")), CardType.DigiID);
         atrs.put(new ATR(HexUtils.hex2bin("3bfe1800008031fe454573744549442076657220312e30a8")), CardType.JavaCard2011);
         atrs.put(new ATR(HexUtils.hex2bin("3bfe1800008031fe45803180664090a4162a00830f9000ef")), CardType.JavaCard2011);
-        atrs.put(new ATR(HexUtils.hex2bin("3BFA1800008031FE45FE654944202F20504B4903")), CardType.JavaCard2011); // Digi-ID 2017 ECC
+        atrs.put(new ATR(HexUtils.hex2bin("3BFA1800008031FE45FE654944202F20504B4903")), CardType.JavaCard2011); // Digi-ID 2017 ECC upgrade
         knownATRs = Collections.unmodifiableMap(atrs);
         rnd = new SecureRandom();
         rnd.nextBytes(new byte[2]); // Seed and drop
     }
 
+    private boolean debug = false;
     private X509Certificate authCert;
     private X509Certificate signCert;
     private Card card = null;
@@ -179,8 +181,14 @@ public final class EstEID implements AutoCloseable {
 
 
     public static EstEID locateOneOf(Collection<X509Certificate> certs) throws CardException, NoSuchAlgorithmException, EstEIDException {
+        return locateOneOf(certs, false);
+    }
+
+    public static EstEID locateOneOf(Collection<X509Certificate> certs, boolean debug) throws CardException, NoSuchAlgorithmException, EstEIDException {
         final List<CardTerminal> terms = TerminalManager.byATR(knownATRs.keySet());
         for (CardTerminal t : terms) {
+            if (debug)
+                t = LoggingCardTerminal.getInstance(t);
             final Card c;
             try {
                 c = t.connect("*");
@@ -210,11 +218,17 @@ public final class EstEID implements AutoCloseable {
     }
 
     public static EstEID anyCard() throws CardException, CertificateParsingException, NoSuchAlgorithmException, EstEIDException {
+        return anyCard(false);
+    }
+
+    public static EstEID anyCard(boolean debug) throws CardException, CertificateParsingException, NoSuchAlgorithmException, EstEIDException {
         ArrayList<AutoCloseable> toClose = new ArrayList<>();
         ArrayList<EstEID> selection = new ArrayList<>();
         final List<CardTerminal> terms = TerminalManager.byATR(knownATRs.keySet());
         try {
             for (CardTerminal t : terms) {
+                if (debug)
+                    t = LoggingCardTerminal.getInstance(t);
                 final Card c;
                 try {
                     c = t.connect("*");
