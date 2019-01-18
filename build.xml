@@ -10,7 +10,6 @@
       <condition>
         <or>
           <isfalse value="${capsuleOK}"/>
-          <isfalse value="${bouncyOK}"/>
         </or>
       </condition>
     </fail>
