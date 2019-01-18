@@ -4,10 +4,8 @@
   <target name="fetch" description="fetch the dependencies">
     <mkdir dir="lib"/>
     <mkdir dir="ext"/>
-    <get src="https://downloads.bouncycastle.org/java/bcprov-jdk15on-160.jar" dest="lib" verbose="true" skipexisting="true"/>
     <get src="http://central.maven.org/maven2/co/paralleluniverse/capsule/1.0.3/capsule-1.0.3.jar" dest="ext" verbose="true" skipexisting="true"/>
     <checksum algorithm="SHA-256" file="ext/capsule-1.0.3.jar" property="d7c892b766a6f9cb99996d259c5c88e21330d86c2d6a1d7750a1ce9daf6b1ab5" verifyProperty="capsuleOK"/>
-    <checksum algorithm="SHA-256" file="lib/bcprov-jdk15on-160.jar" property="7f1a0e6badab38666f8467a9a0ee96656b2f8ec8623867ed34f3cdc173b7ee07" verifyProperty="bouncyOK"/>
     <fail message="Checksum failure">
       <condition>
         <or>
@@ -20,8 +18,8 @@
   <!-- Package it into a nice little JAR -->
   <target name="dist" description="generate the distribution">
     <jar manifest="Manifest.mf" destfile="esteid-app.jar" level="9">
-      <fileset dir="lib">
-        <include name="bcprov-jdk15on-160.jar"/>
+      <fileset dir="${user.home}">
+        <include name=".m2/repository/org/bouncycastle/bcpkix-jdk15on/1.60/bcpkix-jdk15on-1.60.jar"/>
       </fileset>
       <fileset file="target/esteid.jar"/>
       <zipfileset src="ext/capsule-1.0.3.jar" includes="Capsule.class"/>
