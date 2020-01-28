@@ -85,7 +85,7 @@
         <dependency>
             <groupId>ee.sk.smartid</groupId>
             <artifactId>smart-id-java-client</artifactId>
-            <version>1.0</version>
+            <version>1.5</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -191,8 +191,7 @@
                         <configuration>
                             <finalName>esteid</finalName>
                             <transformers>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>org.esteid.hacker.CLI</mainClass>
                                 </transformer>
                             </transformers>
