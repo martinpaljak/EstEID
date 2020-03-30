@@ -20,11 +20,6 @@
         </dependency>
         <dependency>
             <groupId>com.github.martinpaljak</groupId>
-            <artifactId>esteid-nfc</artifactId>
-            <version>19.09.01-WIP</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.martinpaljak</groupId>
             <artifactId>apdu4j-pcsc</artifactId>
             <version>20.01.01</version>
         </dependency>
@@ -81,7 +76,7 @@
                         <path>
                             <groupId>info.picocli</groupId>
                             <artifactId>picocli-codegen</artifactId>
-                            <version>4.0.3</version>
+                            <version>4.2.0</version>
                         </path>
                     </annotationProcessorPaths>
                     <compilerArgs>
