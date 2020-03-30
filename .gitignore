@@ -1,10 +1,9 @@
 /bin/
 /build/
 *~
-/ext/launch4j
 /*.jar
 /*.exe
-/lib/*.jar
 /.idea
 *.iml
-/target
+target
+pom.xml.versionsBackup

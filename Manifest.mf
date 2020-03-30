@@ -1,6 +1,0 @@
-Manifest-Version: 1.0
-Premain-Class: Capsule
-Main-Class: Capsule
-Application-ID: org.esteid.hacker
-Application-Class: org.esteid.hacker.CLI
-Min-Java-Version: 1.8.0
