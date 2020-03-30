@@ -2,278 +2,62 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.github.martinpaljak</groupId>
-    <artifactId>esteid</artifactId>
-    <packaging>jar</packaging>
-    <version>17.11.26</version>
-    <name>EstEID hacker</name>
-    <url>https://github.com/martinpaljak/esteidhacker</url>
+    <parent>
+        <groupId>com.github.martinpaljak</groupId>
+        <artifactId>metacard</artifactId>
+        <version>20.02.19</version>
+    </parent>
+    <artifactId>esteid-java</artifactId>
+    <packaging>pom</packaging>
+    <version>20.03.30</version>
+    <name>EstEID for Java</name>
+    <url>https://github.com/martinpaljak/esteid.java</url>
+
     <description>Java code for working with EstEID cards</description>
     <scm>
-        <url>https://github.com/martinpaljak/esteidhacker</url>
+        <url>https://github.com/martinpaljak/esteid.java</url>
     </scm>
-    <developers>
-        <developer>
-            <id>martinpaljak</id>
-            <name>Martin Paljak</name>
-            <email>martin@martinpaljak.net</email>
-            <url>https://github.com/martinpaljak</url>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-    </developers>
 
     <licenses>
         <license>
             <name>MIT</name>
-            <url>https://github.com/martinpaljak/esteidhacker/blob/master/LICENSE</url>
+            <url>https://github.com/martinpaljak/esteid.java/blob/master/LICENSE</url>
             <distribution>repo</distribution>
         </license>
         <license>
             <name>LGPL</name>
-            <url>https://github.com/martinpaljak/esteidhacker/blob/master/LICENSE</url>
+            <url>https://github.com/martinpaljak/esteid.java/blob/master/LICENSE</url>
             <distribution>repo</distribution>
         </license>
     </licenses>
 
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
+    <modules>
+        <module>library</module>
+        <module>tests</module>
+        <module>tool</module>
+    </modules>
+
     <dependencies>
         <dependency>
-            <groupId>com.github.martinpaljak</groupId>
-            <artifactId>apdu4j</artifactId>
-            <version>17.11.26</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.martinpaljak</groupId>
-            <artifactId>globalplatformpro</artifactId>
-            <version>0.3.10-rc6</version>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>7.1.0</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
-            <version>1.7.25</version>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>1.7.25</version>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk15on</artifactId>
-            <version>1.60</version>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcpkix-jdk15on</artifactId>
-            <version>1.60</version>
-        </dependency>
-        <dependency>
-            <groupId>net.sf.jopt-simple</groupId>
-            <artifactId>jopt-simple</artifactId>
-            <version>5.0.4</version>
-        </dependency>
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>2.6</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>ee.sk.smartid</groupId>
-            <artifactId>smart-id-java-client</artifactId>
-            <version>1.0</version>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.12</version>
+            <version>1.7.30</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <distributionManagement>
-        <repository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-    </distributionManagement>
-
-    <profiles>
-        <profile>
-            <id>sign</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.6</version>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
-
     <build>
-        <resources>
-            <resource>
-                <directory>target/generated-resources</directory>
-            </resource>
-            <resource>
-                <directory>src/main/resources</directory>
-            </resource>
-        </resources>
         <plugins>
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>1.6.0</version>
-                <executions>
-                    <execution>
-                        <id>git-version</id>
-                        <phase>generate-resources</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                    </execution>
-                </executions>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
                 <configuration>
-                    <executable>git</executable>
-                    <outputFile>target/generated-resources/org/esteid/pro_version.txt</outputFile>
-                    <arguments>
-                        <argument>describe</argument>
-                        <argument>--tags</argument>
-                        <argument>--always</argument>
-                        <argument>--long</argument>
-                        <argument>--dirty</argument>
-                    </arguments>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.7.0</version>
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                    <debug>true</debug>
-                    <debuglevel>lines,vars,source</debuglevel>
-                    <compilerArgs>
-                        <arg>-XDenableSunApiLintControl</arg>
-                        <arg>-Xlint:deprecation</arg>
-                        <arg>-Xlint:unchecked</arg>
-                        <arg>-Xlint:sunapi</arg>
-                    </compilerArgs>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.0.0</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <finalName>esteid</finalName>
-                            <transformers>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>org.esteid.hacker.CLI</mainClass>
-                                </transformer>
-                            </transformers>
-                            <artifactSet>
-                                <excludes>
-                                    <!-- Goes bundled with Capsule as a signed JAR -->
-                                    <exclude>org.bouncycastle:bcprov-jdk15on</exclude>
-                                </excludes>
-                            </artifactSet>
-                            <filters>
-                                <filter>
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                        <exclude>META-INF/maven/**</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.sonatype.plugins</groupId>
-                <artifactId>nexus-staging-maven-plugin</artifactId>
-                <version>1.6.8</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <serverId>ossrh</serverId>
-                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <version>2.4</version>
-                <executions>
-                    <execution>
-                        <id>attach-sources</id>
-                        <goals>
-                            <goal>jar-no-fork</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.10.4</version>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>io.github.zlika</groupId>
-                <artifactId>reproducible-build-maven-plugin</artifactId>
-                <version>0.3</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>strip-jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <artifactId>maven-install-plugin</artifactId>
-                <version>2.4</version>
-                <configuration>
-                    <createChecksum>true</createChecksum>
+                    <excludeFilterFile>spotbugs.xml</excludeFilterFile>
                 </configuration>
             </plugin>
         </plugins>
