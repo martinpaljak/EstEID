@@ -5,11 +5,11 @@
     <parent>
         <groupId>com.github.martinpaljak</groupId>
         <artifactId>metacard</artifactId>
-        <version>20.02.19</version>
+        <version>20.04.13</version>
     </parent>
     <artifactId>esteid-java</artifactId>
     <packaging>pom</packaging>
-    <version>20.03.30</version>
+    <version>20.04.20-SNAPSHOT</version>
     <name>EstEID for Java</name>
     <url>https://github.com/martinpaljak/esteid.java</url>
 
