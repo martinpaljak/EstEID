@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.github.martinpaljak</groupId>
         <artifactId>esteid-java</artifactId>
-        <version>20.03.30</version>
+        <version>20.04.20-SNAPSHOT</version>
     </parent>
 
     <artifactId>esteid-tool</artifactId>
@@ -16,12 +16,12 @@
         <dependency>
             <groupId>com.github.martinpaljak</groupId>
             <artifactId>esteid</artifactId>
-            <version>20.03.30</version>
+            <version>20.04.20-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.github.martinpaljak</groupId>
             <artifactId>apdu4j-pcsc</artifactId>
-            <version>20.01.01</version>
+            <version>20.04.15</version>
         </dependency>
         <dependency>
             <groupId>info.picocli</groupId>
@@ -35,9 +35,9 @@
         </dependency>
         <dependency>
             <groupId>com.google.auto.service</groupId>
-            <artifactId>auto-service</artifactId>
+            <artifactId>auto-service-annotations</artifactId>
             <version>1.0-rc6</version>
-            <scope>compile</scope>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
     <build>
@@ -73,6 +73,11 @@
                 <version>3.8.1</version>
                 <configuration>
                     <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.google.auto.service</groupId>
+                            <artifactId>auto-service</artifactId>
+                            <version>1.0-rc6</version>
+                        </path>
                         <path>
                             <groupId>info.picocli</groupId>
                             <artifactId>picocli-codegen</artifactId>
@@ -116,7 +121,8 @@
                         <configuration>
                             <finalName>esteid</finalName>
                             <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>org.esteid.tool.EstEID</mainClass>
                                 </transformer>
                             </transformers>
@@ -133,6 +139,8 @@
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
                                         <exclude>META-INF/maven/**</exclude>
+                                        <exclude>META-INF/MANIFEST.MF</exclude>
+                                        <exclude>**/module-info.class</exclude>
                                     </excludes>
                                 </filter>
                             </filters>

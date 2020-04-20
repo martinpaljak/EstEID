@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.github.martinpaljak</groupId>
         <artifactId>esteid-java</artifactId>
-        <version>20.03.30</version>
+        <version>20.04.20-SNAPSHOT</version>
     </parent>
 
     <artifactId>esteid-tests</artifactId>
@@ -17,18 +17,18 @@
         <dependency>
             <groupId>com.github.martinpaljak</groupId>
             <artifactId>esteid</artifactId>
-            <version>20.03.30</version>
+            <version>20.04.20-SNAPSHOT</version>
         </dependency>
         <!-- Selftest -->
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcpkix-jdk15on</artifactId>
-            <version>1.64</version>
+            <version>1.65</version>
         </dependency>
         <dependency>
             <groupId>com.github.martinpaljak</groupId>
             <artifactId>apdu4j-pcsc</artifactId>
-            <version>20.01.01</version>
+            <version>20.04.15</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

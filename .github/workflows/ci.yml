@@ -1,11 +1,17 @@
-on: pull_request
-name: PR check
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
+name: Continuous Integration
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: [ 8, 11, 13 ]
+        java: [ 8, 11, 14 ]
     name: Java ${{ matrix.java }}
     steps:
       - name: Check out code
