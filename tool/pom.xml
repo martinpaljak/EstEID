@@ -37,7 +37,6 @@
             <groupId>com.google.auto.service</groupId>
             <artifactId>auto-service-annotations</artifactId>
             <version>1.0-rc6</version>
-            <scope>provided</scope>
         </dependency>
     </dependencies>
     <build>
@@ -78,15 +77,7 @@
                             <artifactId>auto-service</artifactId>
                             <version>1.0-rc6</version>
                         </path>
-                        <path>
-                            <groupId>info.picocli</groupId>
-                            <artifactId>picocli-codegen</artifactId>
-                            <version>4.2.0</version>
-                        </path>
                     </annotationProcessorPaths>
-                    <compilerArgs>
-                        <arg>-Aproject=${project.groupId}/${project.artifactId}</arg>
-                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
