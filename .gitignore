@@ -1,9 +1,11 @@
+**/target
+*.iml
+*~
+/*.exe
+/*.jar
+/.idea
+/.mvn/wrapper/maven-wrapper.jar
 /bin/
 /build/
-*~
-/*.jar
-/*.exe
-/.idea
-*.iml
-target
 pom.xml.versionsBackup
+target
