@@ -1,9 +1,9 @@
 package org.esteid;
 
-import apdu4j.APDUBIBO;
-import apdu4j.BIBO;
-import apdu4j.CardBIBO;
-import apdu4j.TerminalManager;
+import apdu4j.core.APDUBIBO;
+import apdu4j.core.BIBO;
+import apdu4j.pcsc.CardBIBO;
+import apdu4j.pcsc.TerminalManager;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.testng.SkipException;
 import org.testng.annotations.BeforeClass;

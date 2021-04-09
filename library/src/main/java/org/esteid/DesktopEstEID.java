@@ -1,6 +1,6 @@
 package org.esteid;
 
-import apdu4j.HexUtils;
+import apdu4j.core.HexUtils;
 
 import java.util.Collections;
 import java.util.HashMap;
