@@ -1,9 +1,9 @@
 package org.esteid;
 
-import apdu4j.APDUBIBO;
-import apdu4j.BIBO;
-import apdu4j.CommandAPDU;
-import apdu4j.ResponseAPDU;
+import apdu4j.core.APDUBIBO;
+import apdu4j.core.BIBO;
+import apdu4j.core.CommandAPDU;
+import apdu4j.core.ResponseAPDU;
 import org.bouncycastle.asn1.*;
 
 import javax.security.auth.callback.CallbackHandler;

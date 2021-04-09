@@ -1,7 +1,8 @@
 package org.esteid.tool;
 
-import apdu4j.BIBO;
-import apdu4j.i.SmartCardApp;
+import apdu4j.core.BIBO;
+import apdu4j.core.SimpleSmartCardApp;
+import apdu4j.core.SmartCardApp;
 import com.google.auto.service.AutoService;
 import picocli.CommandLine;
 
@@ -12,12 +13,10 @@ import java.io.InputStreamReader;
 
 // Tool for apdu4j
 @AutoService(SmartCardApp.class)
-public class EstEID implements SmartCardApp {
+public class EstEID implements SimpleSmartCardApp {
     public static void main(String[] args) {
-
         // Get the reader
         System.out.println("esteid " + getVersion());
-
         // Call CLI
     }
 

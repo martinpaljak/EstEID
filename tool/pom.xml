@@ -21,7 +21,7 @@
         <dependency>
             <groupId>com.github.martinpaljak</groupId>
             <artifactId>apdu4j-pcsc</artifactId>
-            <version>20.04.15</version>
+            <version>21.04.01</version>
         </dependency>
         <dependency>
             <groupId>info.picocli</groupId>
@@ -36,7 +36,7 @@
         <dependency>
             <groupId>com.google.auto.service</groupId>
             <artifactId>auto-service-annotations</artifactId>
-            <version>1.0-rc7</version>
+            <version>1.0</version>
         </dependency>
     </dependencies>
     <build>

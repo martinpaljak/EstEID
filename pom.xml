@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.github.martinpaljak</groupId>
         <artifactId>metacard</artifactId>
-        <version>20.08.07</version>
+        <version>21.04.02</version>
     </parent>
     <artifactId>esteid-java</artifactId>
     <packaging>pom</packaging>
@@ -17,7 +17,14 @@
     <scm>
         <url>https://github.com/martinpaljak/esteid.java</url>
     </scm>
-
+    <repositories>
+        <!-- For picking up latest metacard -->
+        <repository>
+            <id>javacard-pro</id>
+            <name>javacard.pro</name>
+            <url>https://javacard.pro/maven/</url>
+        </repository>
+    </repositories>
     <licenses>
         <license>
             <name>MIT</name>
@@ -41,7 +48,7 @@
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
-            <version>7.3.0</version>
+            <version>7.4.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>

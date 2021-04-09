@@ -1,6 +1,6 @@
 package org.esteid;
 
-import apdu4j.*;
+import apdu4j.core.*;
 
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;

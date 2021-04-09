@@ -1,6 +1,6 @@
 package org.esteid;
 
-import apdu4j.ResponseAPDU;
+import apdu4j.core.ResponseAPDU;
 
 public class WrongPINException extends RuntimeException {
     private static final long serialVersionUID = -258528925655515489L;
