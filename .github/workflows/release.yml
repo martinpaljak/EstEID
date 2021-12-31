@@ -1,0 +1,39 @@
+on:
+  push:
+    tags:
+    - 'v*'
+
+name: Release CI
+
+jobs:
+  build:
+    name: Upload release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+      - name: Setup Java
+        uses: actions/setup-java@v2
+        with:
+          java-version: 11
+          distribution: temurin
+      - name: Set SSH key
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
+      - name: Add known host key
+        run: ssh-keyscan javacard.pro >> ~/.ssh/known_hosts
+      - name: Package
+        run: ./mvnw -B verify
+      - name: Release
+        id: create_release
+        uses: actions/create-release@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+      - name: Deploy package
+        run: ./mvnw -B deploy
