@@ -9,7 +9,7 @@
     </parent>
     <artifactId>esteid-java</artifactId>
     <packaging>pom</packaging>
-    <version>20.04.20-SNAPSHOT</version>
+    <version>21.12.31</version>
     <name>EstEID for Java</name>
     <url>https://github.com/martinpaljak/esteid.java</url>
 
