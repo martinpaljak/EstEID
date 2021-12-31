@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.github.martinpaljak</groupId>
         <artifactId>esteid-java</artifactId>
-        <version>21.12.31</version>
+        <version>21.12.32-SNAPSHOT</version>
     </parent>
 
     <artifactId>esteid-tests</artifactId>
@@ -17,7 +17,7 @@
         <dependency>
             <groupId>com.github.martinpaljak</groupId>
             <artifactId>esteid</artifactId>
-            <version>21.12.31</version>
+            <version>21.12.32-SNAPSHOT</version>
         </dependency>
         <!-- Selftest -->
         <dependency>
